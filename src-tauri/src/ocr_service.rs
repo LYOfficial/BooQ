@@ -385,16 +385,17 @@ pub async fn convert_page_to_markdown(
         "pdf" => {
             // 获取配置
             let config = crate::config::get_config_sync(app_handle);
+            let storage_path = if config.storage_path.is_empty() { None } else { Some(config.storage_path.as_str()) };
             
             // 优先使用 PaddleOCR（如果启用且配置了）
             if config.use_paddle_ocr && is_paddle_ocr_configured(&config) {
                 logger::info("ocr", "使用 PaddleOCR API 进行转换");
                 convert_pdf_with_paddle_ocr_config(&file_info.path, &markdown_dir, page_number, &config).await?
             }
-            // 其次使用 MinerU（如果命令可用）
-            else if crate::mineru_service::MineruService::check_command_available() {
+            // 其次使用 MinerU（如果命令可用，并传入存储路径检查模型）
+            else if crate::mineru_service::MineruService::check_command_available_with_storage(storage_path) {
                 logger::info("ocr", "使用 MinerU 本地工具进行转换");
-                convert_pdf_with_mineru(app_handle, &file_info.path, &markdown_dir, page_number).await?
+                convert_pdf_with_mineru(app_handle, &file_info.path, &markdown_dir, page_number, storage_path).await?
             }
             // 最后回退到简单文本提取
             else {
@@ -470,6 +471,7 @@ async fn convert_pdf_with_mineru(
     file_path: &str,
     output_dir: &PathBuf,
     page_number: u32,
+    storage_path: Option<&str>,
 ) -> Result<String> {
     use crate::mineru_service::MineruService;
     use crate::logger;
@@ -496,8 +498,8 @@ async fn convert_pdf_with_mineru(
         fs::read_to_string(&cached_md)?
     } else {
         logger::info("ocr", "缓存不存在，开始完整转换");
-        // 需要先转换整个 PDF
-        let result = service.convert_pdf_full(file_path, &mineru_output).await?;
+        // 需要先转换整个 PDF，传入存储路径
+        let result = service.convert_pdf_full_with_storage(file_path, &mineru_output, storage_path).await?;
         if let Some(md_file) = result.first() {
             logger::info("ocr", &format!("MinerU 转换成功: {}", md_file));
             fs::read_to_string(md_file)?

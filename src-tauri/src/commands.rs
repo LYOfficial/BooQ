@@ -469,6 +469,89 @@ pub async fn convert_with_mineru(
         .map_err(|e| e.to_string())
 }
 
+/// 获取 MinerU 详细安装信息（包含模型状态）
+#[tauri::command]
+pub fn get_mineru_full_info(app_handle: tauri::AppHandle) -> crate::mineru_service::MineruInstallInfo {
+    let config = config::get_config_sync(&app_handle);
+    let storage_path = if config.storage_path.is_empty() {
+        None
+    } else {
+        Some(config.storage_path.as_str())
+    };
+    crate::mineru_service::MineruService::get_install_info_with_storage(storage_path)
+}
+
+/// 安装 modelscope 依赖
+#[tauri::command]
+pub async fn install_modelscope(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let result = tokio::task::spawn_blocking(move || {
+        crate::mineru_service::MineruService::install_modelscope_with_events(&app_handle)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    
+    result.map_err(|e| e.to_string())
+}
+
+/// 下载 MinerU 主模型
+#[tauri::command]
+pub async fn download_mineru_models(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let config = config::get_config_sync(&app_handle);
+    let storage_path = if config.storage_path.is_empty() {
+        None
+    } else {
+        Some(config.storage_path.clone())
+    };
+    
+    let result = tokio::task::spawn_blocking(move || {
+        crate::mineru_service::MineruService::download_main_models_with_events(
+            &app_handle, 
+            storage_path.as_deref()
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    
+    result.map_err(|e| e.to_string())
+}
+
+/// 下载 OCR 模型
+#[tauri::command]
+pub async fn download_ocr_models(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let config = config::get_config_sync(&app_handle);
+    let storage_path = if config.storage_path.is_empty() {
+        None
+    } else {
+        Some(config.storage_path.clone())
+    };
+    
+    let result = tokio::task::spawn_blocking(move || {
+        crate::mineru_service::MineruService::download_ocr_models_with_events(
+            &app_handle, 
+            storage_path.as_deref()
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    
+    result.map_err(|e| e.to_string())
+}
+
+/// 更新 MinerU 配置文件
+#[tauri::command]
+pub fn update_mineru_config(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let config = config::get_config_sync(&app_handle);
+    let storage_path = if config.storage_path.is_empty() {
+        None
+    } else {
+        Some(config.storage_path.as_str())
+    };
+    
+    crate::mineru_service::MineruService::update_config_with_models(storage_path)
+        .map(|_| "配置更新成功".to_string())
+        .map_err(|e| e.to_string())
+}
+
 // ==================== 日志命令 ====================
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

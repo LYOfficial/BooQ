@@ -244,6 +244,35 @@ function bindSettingsEvents() {
         settingsManager.closeTerminal();
     });
 
+    // 模型下载相关事件
+    document.getElementById('btn-install-modelscope')?.addEventListener('click', async () => {
+        await settingsManager.installModelScope();
+    });
+
+    document.getElementById('btn-close-modelscope-terminal')?.addEventListener('click', () => {
+        settingsManager.closeModelscopeTerminal();
+    });
+
+    document.getElementById('btn-download-main-model')?.addEventListener('click', async () => {
+        await settingsManager.downloadMainModel();
+    });
+
+    document.getElementById('btn-close-main-model-terminal')?.addEventListener('click', () => {
+        settingsManager.closeMainModelTerminal();
+    });
+
+    document.getElementById('btn-download-ocr-model')?.addEventListener('click', async () => {
+        await settingsManager.downloadOcrModel();
+    });
+
+    document.getElementById('btn-close-ocr-model-terminal')?.addEventListener('click', () => {
+        settingsManager.closeOcrModelTerminal();
+    });
+
+    document.getElementById('btn-update-mineru-config')?.addEventListener('click', async () => {
+        await settingsManager.updateMineruConfig();
+    });
+
     document.getElementById('toggle-paddle-ocr')?.addEventListener('change', () => {
         settingsManager.togglePaddleOcrConfig();
     });

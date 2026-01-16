@@ -340,18 +340,20 @@
                         <!-- 工具部署 -->
                         <div class="settings-section-panel" id="section-tools">
                             <div class="settings-section">
-                                <h5>本地 OCR 工具</h5>
-                                <p class="section-desc">使用 MinerU 进行本地文档解析，无需联网，无使用限额</p>
+                                <h5>MinerU 本地 OCR 工具</h5>
+                                <p class="section-desc">使用 MinerU 进行本地文档解析，无需联网，无使用限额。需要按顺序完成：1. 安装模块 → 2. 安装依赖 → 3. 下载模型 → 4. 配置</p>
+                                
+                                <!-- Step 1: 安装 MinerU 模块 -->
                                 <div class="tool-card">
                                     <div class="tool-info">
                                         <div class="tool-header">
-                                            <i class="bi bi-file-earmark-text tool-icon"></i>
+                                            <div class="step-number">1</div>
                                             <div class="tool-title">
-                                                <span class="tool-name">MinerU</span>
+                                                <span class="tool-name">安装 MinerU 模块</span>
                                                 <span class="tool-badge" id="mineru-status-badge">未安装</span>
                                             </div>
                                         </div>
-                                        <p class="tool-desc">开源 PDF 文档解析工具，支持高质量的 PDF 到 Markdown 转换。需要 Python 环境。</p>
+                                        <p class="tool-desc">安装 magic-pdf Python 包，这是 MinerU 的核心组件。需要 Python 3.10+ 环境。</p>
                                         
                                         <!-- 路径信息 -->
                                         <div class="mineru-path-info" id="mineru-path-info" style="display: none;">
@@ -382,6 +384,127 @@
                                             </button>
                                         </div>
                                         <div class="terminal-output" id="terminal-output"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: 安装 modelscope 依赖 -->
+                                <div class="tool-card">
+                                    <div class="tool-info">
+                                        <div class="tool-header">
+                                            <div class="step-number">2</div>
+                                            <div class="tool-title">
+                                                <span class="tool-name">安装模型下载工具</span>
+                                                <span class="tool-badge" id="modelscope-badge">未安装</span>
+                                            </div>
+                                        </div>
+                                        <p class="tool-desc">安装 ModelScope 依赖，用于从国内镜像源下载 MinerU 模型。</p>
+                                    </div>
+                                    <div class="tool-actions">
+                                        <button class="btn btn-primary" id="btn-install-modelscope">
+                                            <i class="bi bi-download"></i> 安装 ModelScope
+                                        </button>
+                                    </div>
+                                    <!-- ModelScope 安装终端输出区域 -->
+                                    <div class="terminal-container" id="modelscope-terminal-container" style="display: none;">
+                                        <div class="terminal-header">
+                                            <span class="terminal-title"><i class="bi bi-terminal"></i> 安装进度</span>
+                                            <button class="btn-terminal-close" id="btn-close-modelscope-terminal">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                        <div class="terminal-output" id="modelscope-terminal-output"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 3: 下载模型 -->
+                                <div class="tool-card">
+                                    <div class="tool-info">
+                                        <div class="tool-header">
+                                            <div class="step-number">3</div>
+                                            <div class="tool-title">
+                                                <span class="tool-name">下载 MinerU 模型</span>
+                                            </div>
+                                        </div>
+                                        <p class="tool-desc">模型将下载到 BooQ 存储路径。请先在"常规设置"中配置存储路径。</p>
+                                        
+                                        <div class="model-storage-info">
+                                            <span class="storage-label">模型存储目录：</span>
+                                            <code class="storage-path" id="mineru-models-dir">未配置</code>
+                                        </div>
+
+                                        <!-- 主模型 -->
+                                        <div class="model-item-card">
+                                            <div class="model-item-header">
+                                                <i class="bi bi-box-seam model-icon"></i>
+                                                <div class="model-item-info">
+                                                    <span class="model-item-name">MinerU 2.5 主模型 (1.2B)</span>
+                                                    <span class="model-item-size">约 2.5GB</span>
+                                                </div>
+                                                <span class="tool-badge" id="main-model-badge">未下载</span>
+                                            </div>
+                                            <p class="model-item-desc">布局分析和文档结构识别的核心模型，必须下载。</p>
+                                            <div class="model-item-actions">
+                                                <button class="btn btn-primary btn-sm" id="btn-download-main-model">
+                                                    <i class="bi bi-download"></i> 下载主模型
+                                                </button>
+                                            </div>
+                                            <!-- 主模型下载终端 -->
+                                            <div class="terminal-container" id="main-model-terminal-container" style="display: none;">
+                                                <div class="terminal-header">
+                                                    <span class="terminal-title"><i class="bi bi-terminal"></i> 下载进度</span>
+                                                    <button class="btn-terminal-close" id="btn-close-main-model-terminal">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="terminal-output" id="main-model-terminal-output"></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- OCR 模型 -->
+                                        <div class="model-item-card">
+                                            <div class="model-item-header">
+                                                <i class="bi bi-eye model-icon"></i>
+                                                <div class="model-item-info">
+                                                    <span class="model-item-name">PDF-Extract-Kit OCR 模型</span>
+                                                    <span class="model-item-size">约 1.5GB</span>
+                                                </div>
+                                                <span class="tool-badge" id="ocr-model-badge">未下载</span>
+                                            </div>
+                                            <p class="model-item-desc">OCR 文字识别模型，用于扫描件和模糊文档，可选下载。</p>
+                                            <div class="model-item-actions">
+                                                <button class="btn btn-outline-primary btn-sm" id="btn-download-ocr-model">
+                                                    <i class="bi bi-download"></i> 下载 OCR 模型
+                                                </button>
+                                            </div>
+                                            <!-- OCR 模型下载终端 -->
+                                            <div class="terminal-container" id="ocr-model-terminal-container" style="display: none;">
+                                                <div class="terminal-header">
+                                                    <span class="terminal-title"><i class="bi bi-terminal"></i> 下载进度</span>
+                                                    <button class="btn-terminal-close" id="btn-close-ocr-model-terminal">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="terminal-output" id="ocr-model-terminal-output"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 4: 配置 -->
+                                <div class="tool-card">
+                                    <div class="tool-info">
+                                        <div class="tool-header">
+                                            <div class="step-number">4</div>
+                                            <div class="tool-title">
+                                                <span class="tool-name">配置 MinerU</span>
+                                            </div>
+                                        </div>
+                                        <p class="tool-desc">更新 MinerU 配置文件，使其使用已下载的模型。完成此步骤后即可使用 MinerU 进行文档解析。</p>
+                                    </div>
+                                    <div class="tool-actions">
+                                        <button class="btn btn-success" id="btn-update-mineru-config" disabled>
+                                            <i class="bi bi-gear"></i> 应用配置
+                                        </button>
                                     </div>
                                 </div>
                             </div>

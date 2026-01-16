@@ -77,8 +77,13 @@ fn main() {
             // MinerU 相关命令
             commands::check_mineru_installed,
             commands::get_mineru_info,
+            commands::get_mineru_full_info,
             commands::refresh_mineru_path,
             commands::install_mineru,
+            commands::install_modelscope,
+            commands::download_mineru_models,
+            commands::download_ocr_models,
+            commands::update_mineru_config,
             commands::convert_with_mineru,
             
             // 日志命令

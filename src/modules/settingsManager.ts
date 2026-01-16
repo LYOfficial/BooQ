@@ -21,6 +21,10 @@ export interface MineruInstallInfo {
     is_installed: boolean;
     command_available: boolean;
     executable_path: string | null;
+    models_downloaded: boolean;
+    ocr_models_downloaded: boolean;
+    models_dir: string | null;
+    modelscope_installed: boolean;
 }
 
 export interface ModelConfig {
@@ -152,6 +156,11 @@ export class SettingsManager {
         // 切换到日志面板时自动加载日志
         if (section === 'logs') {
             this.loadLogs();
+        }
+
+        // 切换到工具面板时自动检测 MinerU 状态
+        if (section === 'tools') {
+            this.checkMinerU();
         }
     }
 
@@ -688,12 +697,7 @@ export class SettingsManager {
         // 监听安装输出事件
         this.mineruInstallUnlisten = await listen<{type: string, message: string}>('mineru-install-output', (event) => {
             if (terminalOutput) {
-                const span = document.createElement('span');
-                span.className = `${event.payload.type}-line`;
-                span.textContent = event.payload.message;
-                terminalOutput.appendChild(span);
-                // 自动滚动到底部
-                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                this.appendTerminalOutput(terminalOutput, event.payload.type, event.payload.message);
             }
         });
 
@@ -751,8 +755,8 @@ export class SettingsManager {
         }
 
         try {
-            // 使用新的详情 API
-            const info = await invoke<MineruInstallInfo>('get_mineru_info');
+            // 使用新的详情 API（包含模型状态）
+            const info = await invoke<MineruInstallInfo>('get_mineru_full_info');
             
             if (this.config) {
                 this.config.mineru_installed = info.is_installed;
@@ -760,12 +764,12 @@ export class SettingsManager {
             
             // 更新状态徽章
             if (badge) {
-                if (info.command_available) {
+                if (info.command_available && info.models_downloaded) {
                     badge.textContent = '已就绪';
                     badge.classList.add('installed');
                     badge.classList.remove('installing');
                 } else if (info.is_installed) {
-                    badge.textContent = '需配置';
+                    badge.textContent = info.models_downloaded ? '已就绪' : '需下载模型';
                     badge.classList.remove('installed');
                     badge.classList.add('installing');
                 } else {
@@ -799,13 +803,16 @@ export class SettingsManager {
             if (installBtn) {
                 installBtn.disabled = info.command_available;
                 if (info.command_available) {
-                    installBtn.innerHTML = '<i class="bi bi-check-circle"></i> 已就绪';
+                    installBtn.innerHTML = '<i class="bi bi-check-circle"></i> 已安装';
                 } else if (info.is_installed) {
                     installBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 重新检测路径';
                 } else {
                     installBtn.innerHTML = '<i class="bi bi-download"></i> 安装 MinerU';
                 }
             }
+
+            // 更新模型状态
+            this.updateModelStatus(info);
         } catch (error) {
             console.error('检测 MinerU 失败:', error);
         } finally {
@@ -813,6 +820,384 @@ export class SettingsManager {
                 checkBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 检测';
                 checkBtn.disabled = false;
             }
+        }
+    }
+
+    private updateModelStatus(info: MineruInstallInfo) {
+        // 更新模型目录显示 - 始终显示路径（即使未下载）
+        const modelsDir = document.getElementById('mineru-models-dir');
+        if (modelsDir) {
+            if (info.models_dir) {
+                modelsDir.textContent = info.models_dir;
+            } else {
+                modelsDir.textContent = '请先配置 BooQ 存储路径';
+            }
+        }
+
+        // 更新 ModelScope 状态
+        const modelscopeBadge = document.getElementById('modelscope-badge');
+        const btnInstallModelscope = document.getElementById('btn-install-modelscope') as HTMLButtonElement;
+        
+        if (modelscopeBadge) {
+            if (info.modelscope_installed) {
+                modelscopeBadge.textContent = '已安装';
+                modelscopeBadge.classList.add('installed');
+                modelscopeBadge.classList.remove('installing');
+            } else {
+                modelscopeBadge.textContent = '未安装';
+                modelscopeBadge.classList.remove('installed', 'installing');
+            }
+        }
+        
+        if (btnInstallModelscope) {
+            btnInstallModelscope.disabled = info.modelscope_installed;
+            if (info.modelscope_installed) {
+                btnInstallModelscope.innerHTML = '<i class="bi bi-check-circle"></i> 已安装';
+            } else {
+                btnInstallModelscope.innerHTML = '<i class="bi bi-download"></i> 安装 ModelScope';
+            }
+        }
+
+        // 更新主模型状态
+        const mainModelBadge = document.getElementById('main-model-badge');
+        const btnDownloadMainModel = document.getElementById('btn-download-main-model') as HTMLButtonElement;
+        
+        if (mainModelBadge) {
+            if (info.models_downloaded) {
+                mainModelBadge.textContent = '已下载';
+                mainModelBadge.classList.add('installed');
+                mainModelBadge.classList.remove('installing');
+            } else {
+                mainModelBadge.textContent = '未下载';
+                mainModelBadge.classList.remove('installed', 'installing');
+            }
+        }
+        
+        if (btnDownloadMainModel) {
+            btnDownloadMainModel.disabled = info.models_downloaded;
+            if (info.models_downloaded) {
+                btnDownloadMainModel.innerHTML = '<i class="bi bi-check-circle"></i> 已下载';
+            } else {
+                btnDownloadMainModel.innerHTML = '<i class="bi bi-download"></i> 下载主模型';
+            }
+        }
+
+        // 更新 OCR 模型状态
+        const ocrModelBadge = document.getElementById('ocr-model-badge');
+        const btnDownloadOcrModel = document.getElementById('btn-download-ocr-model') as HTMLButtonElement;
+        
+        if (ocrModelBadge) {
+            if (info.ocr_models_downloaded) {
+                ocrModelBadge.textContent = '已下载';
+                ocrModelBadge.classList.add('installed');
+                ocrModelBadge.classList.remove('installing');
+            } else {
+                ocrModelBadge.textContent = '未下载';
+                ocrModelBadge.classList.remove('installed', 'installing');
+            }
+        }
+        
+        if (btnDownloadOcrModel) {
+            btnDownloadOcrModel.disabled = info.ocr_models_downloaded;
+            if (info.ocr_models_downloaded) {
+                btnDownloadOcrModel.innerHTML = '<i class="bi bi-check-circle"></i> 已下载';
+            } else {
+                btnDownloadOcrModel.innerHTML = '<i class="bi bi-download"></i> 下载 OCR 模型';
+            }
+        }
+
+        // 更新配置按钮状态
+        const btnUpdateConfig = document.getElementById('btn-update-mineru-config') as HTMLButtonElement;
+        if (btnUpdateConfig) {
+            btnUpdateConfig.disabled = !info.models_downloaded;
+        }
+    }
+
+    // 终端输出缓冲区（用于批量处理输出）
+    private terminalBuffers: Map<string, { messages: Array<{type: string, message: string}>, pending: boolean }> = new Map();
+
+    // 批量追加终端输出（解决输出刷新太快的问题）
+    private appendTerminalOutput(terminalOutput: HTMLElement, type: string, message: string) {
+        const terminalId = terminalOutput.id;
+        
+        if (!this.terminalBuffers.has(terminalId)) {
+            this.terminalBuffers.set(terminalId, { messages: [], pending: false });
+        }
+        
+        const buffer = this.terminalBuffers.get(terminalId)!;
+        buffer.messages.push({ type, message });
+        
+        // 如果没有待处理的动画帧，安排一次更新
+        if (!buffer.pending) {
+            buffer.pending = true;
+            requestAnimationFrame(() => {
+                this.flushTerminalBuffer(terminalOutput, terminalId);
+            });
+        }
+    }
+
+    private flushTerminalBuffer(terminalOutput: HTMLElement, terminalId: string) {
+        const buffer = this.terminalBuffers.get(terminalId);
+        if (!buffer || buffer.messages.length === 0) return;
+        
+        // 创建文档片段以批量插入
+        const fragment = document.createDocumentFragment();
+        
+        for (const { type, message } of buffer.messages) {
+            const span = document.createElement('span');
+            span.className = `${type}-line`;
+            span.textContent = message;
+            fragment.appendChild(span);
+        }
+        
+        terminalOutput.appendChild(fragment);
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        
+        // 清空缓冲区
+        buffer.messages = [];
+        buffer.pending = false;
+    }
+
+    private modelscopeUnlisten: UnlistenFn | null = null;
+    private mainModelUnlisten: UnlistenFn | null = null;
+    private ocrModelUnlisten: UnlistenFn | null = null;
+
+    async installModelScope() {
+        const btn = document.getElementById('btn-install-modelscope') as HTMLButtonElement;
+        const badge = document.getElementById('modelscope-badge');
+        const terminalContainer = document.getElementById('modelscope-terminal-container');
+        const terminalOutput = document.getElementById('modelscope-terminal-output');
+        
+        if (!btn) return;
+
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> 安装中...';
+        btn.disabled = true;
+
+        if (badge) {
+            badge.textContent = '安装中';
+            badge.classList.add('installing');
+            badge.classList.remove('installed');
+        }
+
+        // 显示终端容器
+        if (terminalContainer) {
+            terminalContainer.style.display = 'block';
+        }
+        if (terminalOutput) {
+            terminalOutput.innerHTML = '';
+        }
+
+        // 监听输出事件
+        this.modelscopeUnlisten = await listen<{type: string, model_type: string, message: string}>('mineru-model-output', (event) => {
+            if (terminalOutput && event.payload.model_type === 'deps') {
+                this.appendTerminalOutput(terminalOutput, event.payload.type, event.payload.message);
+            }
+        });
+
+        try {
+            await invoke<string>('install_modelscope');
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> 已安装';
+            
+            if (badge) {
+                badge.textContent = '已安装';
+                badge.classList.remove('installing');
+                badge.classList.add('installed');
+            }
+
+            // 刷新状态
+            await this.checkMinerU();
+        } catch (error) {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            
+            if (badge) {
+                badge.textContent = '安装失败';
+                badge.classList.remove('installing', 'installed');
+            }
+            
+            console.error('安装 modelscope 失败:', error);
+        } finally {
+            if (this.modelscopeUnlisten) {
+                this.modelscopeUnlisten();
+                this.modelscopeUnlisten = null;
+            }
+        }
+    }
+
+    async downloadMainModel() {
+        const btn = document.getElementById('btn-download-main-model') as HTMLButtonElement;
+        const badge = document.getElementById('main-model-badge');
+        const terminalContainer = document.getElementById('main-model-terminal-container');
+        const terminalOutput = document.getElementById('main-model-terminal-output');
+        
+        if (!btn) return;
+
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> 下载中...';
+        btn.disabled = true;
+
+        if (badge) {
+            badge.textContent = '下载中';
+            badge.classList.add('installing');
+            badge.classList.remove('installed');
+        }
+
+        // 显示终端容器
+        if (terminalContainer) {
+            terminalContainer.style.display = 'block';
+        }
+        if (terminalOutput) {
+            terminalOutput.innerHTML = '';
+        }
+
+        // 监听输出事件
+        this.mainModelUnlisten = await listen<{type: string, model_type: string, message: string}>('mineru-model-output', (event) => {
+            if (terminalOutput && event.payload.model_type === 'main') {
+                this.appendTerminalOutput(terminalOutput, event.payload.type, event.payload.message);
+            }
+        });
+
+        try {
+            await invoke<string>('download_mineru_models');
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> 已下载';
+            
+            if (badge) {
+                badge.textContent = '已下载';
+                badge.classList.remove('installing');
+                badge.classList.add('installed');
+            }
+
+            // 刷新状态
+            await this.checkMinerU();
+        } catch (error) {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            
+            if (badge) {
+                badge.textContent = '下载失败';
+                badge.classList.remove('installing', 'installed');
+            }
+            
+            console.error('下载主模型失败:', error);
+        } finally {
+            if (this.mainModelUnlisten) {
+                this.mainModelUnlisten();
+                this.mainModelUnlisten = null;
+            }
+        }
+    }
+
+    async downloadOcrModel() {
+        const btn = document.getElementById('btn-download-ocr-model') as HTMLButtonElement;
+        const badge = document.getElementById('ocr-model-badge');
+        const terminalContainer = document.getElementById('ocr-model-terminal-container');
+        const terminalOutput = document.getElementById('ocr-model-terminal-output');
+        
+        if (!btn) return;
+
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> 下载中...';
+        btn.disabled = true;
+
+        if (badge) {
+            badge.textContent = '下载中';
+            badge.classList.add('installing');
+            badge.classList.remove('installed');
+        }
+
+        // 显示终端容器
+        if (terminalContainer) {
+            terminalContainer.style.display = 'block';
+        }
+        if (terminalOutput) {
+            terminalOutput.innerHTML = '';
+        }
+
+        // 监听输出事件
+        this.ocrModelUnlisten = await listen<{type: string, model_type: string, message: string}>('mineru-model-output', (event) => {
+            if (terminalOutput && event.payload.model_type === 'ocr') {
+                this.appendTerminalOutput(terminalOutput, event.payload.type, event.payload.message);
+            }
+        });
+
+        try {
+            await invoke<string>('download_ocr_models');
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> 已下载';
+            
+            if (badge) {
+                badge.textContent = '已下载';
+                badge.classList.remove('installing');
+                badge.classList.add('installed');
+            }
+
+            // 刷新状态
+            await this.checkMinerU();
+        } catch (error) {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            
+            if (badge) {
+                badge.textContent = '下载失败';
+                badge.classList.remove('installing', 'installed');
+            }
+            
+            console.error('下载 OCR 模型失败:', error);
+        } finally {
+            if (this.ocrModelUnlisten) {
+                this.ocrModelUnlisten();
+                this.ocrModelUnlisten = null;
+            }
+        }
+    }
+
+    closeModelscopeTerminal() {
+        const terminalContainer = document.getElementById('modelscope-terminal-container');
+        if (terminalContainer) {
+            terminalContainer.style.display = 'none';
+        }
+    }
+
+    closeMainModelTerminal() {
+        const terminalContainer = document.getElementById('main-model-terminal-container');
+        if (terminalContainer) {
+            terminalContainer.style.display = 'none';
+        }
+    }
+
+    closeOcrModelTerminal() {
+        const terminalContainer = document.getElementById('ocr-model-terminal-container');
+        if (terminalContainer) {
+            terminalContainer.style.display = 'none';
+        }
+    }
+
+    async updateMineruConfig() {
+        const btn = document.getElementById('btn-update-mineru-config') as HTMLButtonElement;
+        
+        if (!btn) return;
+
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> 更新中...';
+        btn.disabled = true;
+
+        try {
+            await invoke<string>('update_mineru_config');
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> 配置成功';
+            
+            // 3秒后恢复按钮
+            setTimeout(() => {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }, 3000);
+            
+            // 刷新状态
+            await this.checkMinerU();
+        } catch (error) {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            console.error('更新配置失败:', error);
+            alert('更新配置失败: ' + error);
         }
     }
 
