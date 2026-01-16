@@ -183,6 +183,58 @@ pub async fn get_markdown_source(
         .map_err(|e| e.to_string())
 }
 
+/// 检查 PaddleOCR-VL API 是否已配置
+#[tauri::command]
+pub fn check_paddle_ocr_configured() -> bool {
+    ocr_service::PaddleOCRClient::is_configured()
+}
+
+/// 清除指定页面的 Markdown 缓存
+#[tauri::command]
+pub async fn clear_markdown_cache(
+    app_handle: tauri::AppHandle,
+    file_id: String,
+    page_number: Option<u32>,
+) -> Result<(), String> {
+    ocr_service::clear_markdown_cache(&app_handle, &file_id, page_number)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// 使用 PaddleOCR-VL 转换整个 PDF 文件
+#[tauri::command]
+pub async fn convert_file_with_paddle_ocr(
+    app_handle: tauri::AppHandle,
+    file_id: String,
+) -> Result<Vec<String>, String> {
+    // 获取文件信息
+    let file_info = file_manager::get_file_info(&app_handle, &file_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    // 创建 PaddleOCR 客户端
+    let client = ocr_service::PaddleOCRClient::from_env()
+        .map_err(|e| e.to_string())?;
+    
+    // 获取输出目录
+    let config = config::get_config_sync(&app_handle);
+    let base_path = if !config.storage_path.is_empty() {
+        std::path::PathBuf::from(&config.storage_path)
+    } else {
+        app_handle
+            .path_resolver()
+            .app_data_dir()
+            .unwrap()
+            .join("files")
+    };
+    let output_dir = base_path.join(&file_id).join("markdown");
+    
+    // 解析 PDF 并保存
+    client.parse_and_save(&file_info.path, &output_dir)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // ==================== AI 分析命令 ====================
 
 #[tauri::command]

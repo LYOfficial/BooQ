@@ -157,6 +157,20 @@ pub async fn get_file_list(app_handle: &AppHandle) -> Result<Vec<FileInfo>> {
     Ok(files)
 }
 
+/// 获取单个文件信息
+pub async fn get_file_info(app_handle: &AppHandle, file_id: &str) -> Result<FileInfo> {
+    let storage_root = get_storage_root(app_handle);
+    let meta_path = storage_root.join(file_id).join("meta.json");
+    
+    if !meta_path.exists() {
+        return Err(anyhow!("文件不存在"));
+    }
+    
+    let content = fs::read_to_string(&meta_path)?;
+    let file_info: FileInfo = serde_json::from_str(&content)?;
+    Ok(file_info)
+}
+
 /// 删除文件
 pub async fn delete_file(app_handle: &AppHandle, file_id: &str) -> Result<()> {
     let storage_root = get_storage_root(app_handle);

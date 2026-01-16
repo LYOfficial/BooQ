@@ -820,6 +820,55 @@ body {
     margin: 4px 0;
 }
 
+.empty-state.error-state i {
+    color: var(--danger-color);
+    opacity: 0.8;
+}
+
+.empty-state.error-state p:first-of-type {
+    color: var(--danger-color);
+    font-weight: 500;
+}
+
+/* ==================== 加载状态 ==================== */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    min-height: 300px;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.loading-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
 /* ==================== 按钮样式覆盖 ==================== */
 .btn {
     display: inline-flex;

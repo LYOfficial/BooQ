@@ -70,6 +70,9 @@
                         <button class="tab-btn" data-mode="code">代码文件</button>
                     </div>
                     <div class="preview-actions">
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-refresh-ocr" title="重新识别当前页">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
                         <button class="btn btn-sm btn-outline-primary" id="btn-convert-md" title="转换为Markdown">
                             <i class="bi bi-file-earmark-text"></i> 转换成Markdown格式
                         </button>
@@ -426,7 +429,13 @@
     <script src="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/marked/11.1.1/marked.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // 设置 PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
     <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

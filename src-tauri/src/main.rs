@@ -16,6 +16,9 @@ mod config;
 mod utils;
 
 fn main() {
+    // 加载 .env 文件（开发环境）
+    let _ = dotenvy::dotenv();
+    
     tauri::Builder::default()
         .setup(|app| {
             // 初始化应用数据目录
@@ -42,6 +45,9 @@ fn main() {
             commands::convert_page_to_markdown,
             commands::get_markdown_content,
             commands::get_markdown_source,
+            commands::check_paddle_ocr_configured,
+            commands::convert_file_with_paddle_ocr,
+            commands::clear_markdown_cache,
             
             // AI 分析命令
             commands::start_analysis,

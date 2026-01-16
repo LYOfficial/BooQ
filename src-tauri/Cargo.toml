@@ -32,6 +32,7 @@ image = "0.24"
 pdf = "0.8"
 lopdf = "0.31"
 async-trait = "0.1"
+dotenvy = "0.15"
 
 [features]
 default = ["custom-protocol"]

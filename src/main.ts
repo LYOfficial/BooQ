@@ -140,6 +140,11 @@ function bindPreviewEvents() {
         await previewManager.convertToMarkdown();
     });
 
+    // 重新识别按钮
+    document.getElementById('btn-refresh-ocr')?.addEventListener('click', async () => {
+        await previewManager.refreshCurrentPage();
+    });
+
     // 开始分析按钮
     document.getElementById('btn-start-analysis')?.addEventListener('click', async () => {
         const currentFile = fileManager.getCurrentFile();
