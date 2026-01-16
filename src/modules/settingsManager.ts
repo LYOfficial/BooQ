@@ -22,11 +22,122 @@ export interface AppConfig {
     solving_model: string;
 }
 
+// 供应商配置信息
+const PROVIDER_CONFIG: Record<string, { name: string; defaultUrl: string; icon: string }> = {
+    openai: {
+        name: 'OpenAI',
+        defaultUrl: 'https://api.openai.com/v1/chat/completions',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/openai.png'
+    },
+    anthropic: {
+        name: 'Anthropic',
+        defaultUrl: 'https://api.anthropic.com/v1/messages',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/anthropic.png'
+    },
+    gemini: {
+        name: 'Google Gemini',
+        defaultUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/gemini.png'
+    },
+    deepseek: {
+        name: 'DeepSeek',
+        defaultUrl: 'https://api.deepseek.com/v1/chat/completions',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/deepseek.png'
+    },
+    zhipu: {
+        name: '智谱AI',
+        defaultUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/zhipu.png'
+    },
+    qwen: {
+        name: '通义千问',
+        defaultUrl: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/qwen.png'
+    },
+    moonshot: {
+        name: 'Moonshot',
+        defaultUrl: 'https://api.moonshot.cn/v1/chat/completions',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/moonshot.png'
+    },
+    ollama: {
+        name: 'Ollama',
+        defaultUrl: 'http://localhost:11434/api/chat',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/ollama.png'
+    },
+    siliconcloud: {
+        name: '硅基流动',
+        defaultUrl: 'https://api.siliconflow.cn/v1/chat/completions',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/siliconcloud.png'
+    },
+    doubao: {
+        name: '豆包',
+        defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/doubao.png'
+    },
+    groq: {
+        name: 'Groq',
+        defaultUrl: 'https://api.groq.com/openai/v1/chat/completions',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/groq.png'
+    },
+    azure: {
+        name: 'Azure OpenAI',
+        defaultUrl: 'https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT/chat/completions?api-version=2024-02-01',
+        icon: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/azure.png'
+    },
+    custom: {
+        name: '自定义',
+        defaultUrl: '',
+        icon: ''
+    }
+};
+
 export class SettingsManager {
     private config: AppConfig | null = null;
+    private selectedProvider: string = '';
 
     async init() {
         await this.loadConfig();
+        this.bindNavigationEvents();
+        this.bindProviderCardEvents();
+    }
+
+    private bindNavigationEvents() {
+        const navItems = document.querySelectorAll('.settings-nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const section = item.getAttribute('data-section');
+                if (section) {
+                    this.switchSection(section);
+                }
+            });
+        });
+    }
+
+    private switchSection(section: string) {
+        // 更新导航项
+        document.querySelectorAll('.settings-nav-item').forEach(item => {
+            item.classList.toggle('active', item.getAttribute('data-section') === section);
+        });
+
+        // 更新内容面板
+        document.querySelectorAll('.settings-section-panel').forEach(panel => {
+            panel.classList.toggle('active', panel.id === `section-${section}`);
+        });
+    }
+
+    private bindProviderCardEvents() {
+        const providerGrid = document.getElementById('provider-grid');
+        if (providerGrid) {
+            providerGrid.addEventListener('click', (e) => {
+                const card = (e.target as HTMLElement).closest('.provider-card');
+                if (card) {
+                    const provider = card.getAttribute('data-provider');
+                    if (provider) {
+                        this.showAddModelDialogForProvider(provider);
+                    }
+                }
+            });
+        }
     }
 
     async loadConfig() {
@@ -67,6 +178,7 @@ export class SettingsManager {
         // 更新模型列表
         this.renderModelList();
         this.updateModelSelects();
+        this.updateProviderCards();
     }
 
     private renderModelList() {
@@ -74,27 +186,27 @@ export class SettingsManager {
         if (!container || !this.config) return;
 
         if (this.config.models.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state" style="padding: 20px;">
-                    <p class="text-muted">暂未添加模型</p>
-                </div>
-            `;
+            container.innerHTML = '';
             return;
         }
 
-        container.innerHTML = this.config.models.map(model => `
-            <div class="model-item" data-model-id="${model.id}">
-                <div class="model-item-info">
-                    <div class="model-item-name">${model.name}</div>
-                    <div class="model-item-provider">${this.getProviderName(model.provider)} - ${model.model_name}</div>
+        container.innerHTML = this.config.models.map(model => {
+            const providerConfig = PROVIDER_CONFIG[model.provider] || PROVIDER_CONFIG.custom;
+            return `
+                <div class="model-item" data-model-id="${model.id}">
+                    ${providerConfig.icon ? `<img src="${providerConfig.icon}" alt="${providerConfig.name}" class="model-item-icon">` : '<i class="bi bi-cpu model-item-icon" style="font-size: 24px;"></i>'}
+                    <div class="model-item-info">
+                        <div class="model-item-name">${model.name}</div>
+                        <div class="model-item-provider">${providerConfig.name} - ${model.model_name}</div>
+                    </div>
+                    <div class="model-item-actions">
+                        <button class="btn btn-sm btn-outline-danger btn-delete-model" data-model-id="${model.id}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="model-item-actions">
-                    <button class="btn btn-sm btn-outline-danger btn-delete-model" data-model-id="${model.id}">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         // 绑定删除按钮事件
         container.querySelectorAll('.btn-delete-model').forEach(btn => {
@@ -107,17 +219,21 @@ export class SettingsManager {
         });
     }
 
-    private getProviderName(provider: string): string {
-        const names: Record<string, string> = {
-            'openai': 'OpenAI',
-            'azure': 'Azure OpenAI',
-            'anthropic': 'Anthropic',
-            'deepseek': 'DeepSeek',
-            'zhipu': '智谱AI',
-            'qwen': '通义千问',
-            'custom': '自定义'
-        };
-        return names[provider] || provider;
+    private updateProviderCards() {
+        if (!this.config) return;
+
+        // 获取已配置的供应商
+        const configuredProviders = new Set(this.config.models.map(m => m.provider));
+
+        // 更新卡片状态
+        document.querySelectorAll('.provider-card').forEach(card => {
+            const provider = card.getAttribute('data-provider');
+            if (provider && configuredProviders.has(provider)) {
+                card.classList.add('configured');
+            } else {
+                card.classList.remove('configured');
+            }
+        });
     }
 
     private updateModelSelects() {
@@ -151,6 +267,7 @@ export class SettingsManager {
         if (modal) {
             modal.style.display = 'flex';
             this.loadConfig(); // 重新加载配置
+            this.switchSection('general'); // 默认显示常规设置
         }
     }
 
@@ -220,21 +337,68 @@ export class SettingsManager {
         }
     }
 
-    showAddModelDialog() {
+    showAddModelDialogForProvider(provider: string) {
+        this.selectedProvider = provider;
+        const providerConfig = PROVIDER_CONFIG[provider] || PROVIDER_CONFIG.custom;
+        
         const modal = document.getElementById('add-model-modal');
+        const titleEl = document.getElementById('add-model-title');
+        const iconEl = document.getElementById('modal-provider-icon') as HTMLImageElement;
+        const providerSelectGroup = document.getElementById('provider-select-group');
+        const providerSelect = document.getElementById('select-model-provider') as HTMLSelectElement;
+        const urlInput = document.getElementById('input-model-url') as HTMLInputElement;
+        const apiKeyGroup = document.getElementById('api-key-group');
+        
         if (modal) {
             modal.style.display = 'flex';
             
-            // 清空表单
-            const inputs = ['input-model-name', 'input-model-url', 'input-model-key', 'input-model-id'];
-            inputs.forEach(id => {
-                const input = document.getElementById(id) as HTMLInputElement;
-                if (input) input.value = '';
-            });
+            // 设置标题和图标
+            if (titleEl) {
+                titleEl.textContent = provider === 'custom' ? '添加自定义模型' : `添加 ${providerConfig.name} 模型`;
+            }
             
-            const providerSelect = document.getElementById('select-model-provider') as HTMLSelectElement;
-            if (providerSelect) providerSelect.value = 'openai';
+            if (iconEl) {
+                if (providerConfig.icon) {
+                    iconEl.src = providerConfig.icon;
+                    iconEl.style.display = 'block';
+                } else {
+                    iconEl.style.display = 'none';
+                }
+            }
+            
+            // 显示/隐藏供应商选择
+            if (providerSelectGroup) {
+                providerSelectGroup.style.display = provider === 'custom' ? 'block' : 'none';
+            }
+            
+            // 设置默认值
+            if (providerSelect) {
+                providerSelect.value = provider;
+            }
+            
+            if (urlInput) {
+                urlInput.value = providerConfig.defaultUrl;
+                urlInput.placeholder = providerConfig.defaultUrl || '请输入 API URL';
+            }
+            
+            // Ollama 本地模型不需要 API Key
+            if (apiKeyGroup) {
+                apiKeyGroup.style.display = provider === 'ollama' ? 'none' : 'block';
+            }
+            
+            // 清空其他表单
+            const nameInput = document.getElementById('input-model-name') as HTMLInputElement;
+            const keyInput = document.getElementById('input-model-key') as HTMLInputElement;
+            const modelIdInput = document.getElementById('input-model-id') as HTMLInputElement;
+            
+            if (nameInput) nameInput.value = '';
+            if (keyInput) keyInput.value = '';
+            if (modelIdInput) modelIdInput.value = '';
         }
+    }
+
+    showAddModelDialog() {
+        this.showAddModelDialogForProvider('custom');
     }
 
     hideAddModelDialog() {
@@ -242,6 +406,7 @@ export class SettingsManager {
         if (modal) {
             modal.style.display = 'none';
         }
+        this.selectedProvider = '';
     }
 
     async addModel() {
@@ -252,13 +417,21 @@ export class SettingsManager {
         const modelIdInput = document.getElementById('input-model-id') as HTMLInputElement;
 
         const name = nameInput?.value?.trim();
-        const provider = providerSelect?.value;
+        const provider = this.selectedProvider || providerSelect?.value || 'custom';
         const apiUrl = urlInput?.value?.trim();
-        const apiKey = keyInput?.value?.trim();
+        const apiKey = keyInput?.value?.trim() || '';
         const modelName = modelIdInput?.value?.trim();
 
-        if (!name || !apiUrl || !apiKey || !modelName) {
+        // Ollama 不需要 API Key
+        const needsApiKey = provider !== 'ollama';
+
+        if (!name || !apiUrl || !modelName) {
             alert('请填写所有必填字段');
+            return;
+        }
+
+        if (needsApiKey && !apiKey) {
+            alert('请填写 API Key');
             return;
         }
 
@@ -278,6 +451,7 @@ export class SettingsManager {
                 this.config.models.push(model);
                 this.renderModelList();
                 this.updateModelSelects();
+                this.updateProviderCards();
             }
 
             this.hideAddModelDialog();
@@ -306,6 +480,7 @@ export class SettingsManager {
                 
                 this.renderModelList();
                 this.updateModelSelects();
+                this.updateProviderCards();
             }
         } catch (error) {
             console.error('删除模型失败:', error);

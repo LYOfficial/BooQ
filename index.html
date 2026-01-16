@@ -35,7 +35,7 @@
                 <button class="titlebar-btn" id="btn-maximize" title="最大化">
                     <i class="bi bi-square"></i>
                 </button>
-                <button class="titlebar-btn btn-close" id="btn-close" title="关闭">
+                <button class="titlebar-btn titlebar-close" id="btn-close" title="关闭">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -152,74 +152,172 @@
 
         <!-- 设置弹窗 -->
         <div class="modal-overlay" id="settings-modal" style="display: none;">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-lg">
                 <div class="modal-header">
                     <h4>设置</h4>
+                    <span class="modal-subtitle">集中管理模型与数据策略</span>
                     <button class="btn-close-modal" id="btn-close-settings">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <div class="settings-section">
-                        <h5>存储设置</h5>
-                        <div class="form-group">
-                            <label>文件存储路径</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="input-storage-path" readonly>
-                                <button class="btn btn-outline-secondary" id="btn-browse-path">
-                                    <i class="bi bi-folder2"></i> 浏览
-                                </button>
+                <div class="settings-container">
+                    <!-- 左侧导航 -->
+                    <div class="settings-sidebar">
+                        <div class="settings-nav-item active" data-section="general">
+                            <i class="bi bi-gear"></i>
+                            <div class="nav-item-content">
+                                <span class="nav-item-title">常规设置</span>
+                                <span class="nav-item-desc">主题与存储配置</span>
+                            </div>
+                        </div>
+                        <div class="settings-nav-item" data-section="models">
+                            <i class="bi bi-cpu"></i>
+                            <div class="nav-item-content">
+                                <span class="nav-item-title">模型选择</span>
+                                <span class="nav-item-desc">管理模型供应商</span>
+                            </div>
+                        </div>
+                        <div class="settings-nav-item" data-section="workflow">
+                            <i class="bi bi-diagram-3"></i>
+                            <div class="nav-item-content">
+                                <span class="nav-item-title">工作流配置</span>
+                                <span class="nav-item-desc">配置分析流程</span>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- 右侧内容区 -->
+                    <div class="settings-content">
+                        <!-- 常规设置 -->
+                        <div class="settings-section-panel active" id="section-general">
+                            <div class="settings-section">
+                                <h5>存储设置</h5>
+                                <div class="form-group">
+                                    <label>文件存储路径</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="input-storage-path" readonly>
+                                        <button class="btn btn-outline-secondary" id="btn-browse-path">
+                                            <i class="bi bi-folder2"></i> 浏览
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div class="settings-section">
-                        <h5>主题设置</h5>
-                        <div class="theme-options">
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="light">
-                                <span><i class="bi bi-sun"></i> 白天模式</span>
-                            </label>
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="dark">
-                                <span><i class="bi bi-moon"></i> 夜间模式</span>
-                            </label>
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="system" checked>
-                                <span><i class="bi bi-circle-half"></i> 跟随系统</span>
-                            </label>
+                            <div class="settings-section">
+                                <h5>主题设置</h5>
+                                <div class="theme-options">
+                                    <label class="theme-option">
+                                        <input type="radio" name="theme" value="light">
+                                        <span><i class="bi bi-sun"></i> 白天模式</span>
+                                    </label>
+                                    <label class="theme-option">
+                                        <input type="radio" name="theme" value="dark">
+                                        <span><i class="bi bi-moon"></i> 夜间模式</span>
+                                    </label>
+                                    <label class="theme-option">
+                                        <input type="radio" name="theme" value="system" checked>
+                                        <span><i class="bi bi-circle-half"></i> 跟随系统</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="settings-section">
-                        <h5>模型配置</h5>
-                        <div class="model-list" id="model-list">
-                            <!-- 模型列表将通过 JS 动态生成 -->
+                        <!-- 模型选择 -->
+                        <div class="settings-section-panel" id="section-models">
+                            <div class="model-config-header">
+                                <h5>已配置的模型</h5>
+                                <div class="model-list" id="model-list">
+                                    <!-- 模型列表将通过 JS 动态生成 -->
+                                </div>
+                            </div>
+                            
+                            <div class="provider-grid-section">
+                                <h5>选择模型供应商</h5>
+                                <div class="provider-grid" id="provider-grid">
+                                    <!-- 供应商卡片 -->
+                                    <div class="provider-card" data-provider="openai">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/openai.png" alt="OpenAI" class="provider-icon">
+                                        <span class="provider-name">OpenAI</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="anthropic">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/anthropic.png" alt="Anthropic" class="provider-icon">
+                                        <span class="provider-name">Anthropic</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="gemini">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/gemini.png" alt="Google Gemini" class="provider-icon">
+                                        <span class="provider-name">Google Gemini</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="deepseek">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/deepseek.png" alt="DeepSeek" class="provider-icon">
+                                        <span class="provider-name">DeepSeek</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="zhipu">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/zhipu.png" alt="智谱AI" class="provider-icon">
+                                        <span class="provider-name">智谱AI</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="qwen">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/qwen.png" alt="通义千问" class="provider-icon">
+                                        <span class="provider-name">通义千问</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="moonshot">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/moonshot.png" alt="Moonshot" class="provider-icon">
+                                        <span class="provider-name">Moonshot</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="ollama">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/ollama.png" alt="Ollama" class="provider-icon">
+                                        <span class="provider-name">Ollama</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="siliconcloud">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/siliconcloud.png" alt="硅基流动" class="provider-icon">
+                                        <span class="provider-name">硅基流动</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="doubao">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/doubao.png" alt="豆包" class="provider-icon">
+                                        <span class="provider-name">豆包</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="groq">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/groq.png" alt="Groq" class="provider-icon">
+                                        <span class="provider-name">Groq</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="azure">
+                                        <img src="https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/light/azure.png" alt="Azure" class="provider-icon">
+                                        <span class="provider-name">Azure OpenAI</span>
+                                    </div>
+                                    <div class="provider-card add-custom" data-provider="custom">
+                                        <i class="bi bi-plus-lg"></i>
+                                        <span class="provider-name">自定义模型</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <button class="btn btn-sm btn-outline-primary mt-2" id="btn-add-model">
-                            <i class="bi bi-plus-lg"></i> 添加模型
-                        </button>
-                    </div>
 
-                    <div class="settings-section">
-                        <h5>工作流配置</h5>
-                        <div class="form-group">
-                            <label>阅读模型</label>
-                            <select class="form-select" id="select-reading-model">
-                                <option value="">请先添加模型</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>分析模型</label>
-                            <select class="form-select" id="select-analysis-model">
-                                <option value="">请先添加模型</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>解题模型</label>
-                            <select class="form-select" id="select-solving-model">
-                                <option value="">请先添加模型</option>
-                            </select>
+                        <!-- 工作流配置 -->
+                        <div class="settings-section-panel" id="section-workflow">
+                            <div class="settings-section">
+                                <h5>工作流配置</h5>
+                                <p class="section-desc">为不同任务分配不同的模型，以获得最佳效果</p>
+                                <div class="form-group">
+                                    <label>阅读模型</label>
+                                    <select class="form-select" id="select-reading-model">
+                                        <option value="">请先添加模型</option>
+                                    </select>
+                                    <small class="form-text">用于阅读和理解文档内容</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>分析模型</label>
+                                    <select class="form-select" id="select-analysis-model">
+                                        <option value="">请先添加模型</option>
+                                    </select>
+                                    <small class="form-text">用于分析和提取题目</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>解题模型</label>
+                                    <select class="form-select" id="select-solving-model">
+                                        <option value="">请先添加模型</option>
+                                    </select>
+                                    <small class="form-text">用于生成题目答案和解析</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -234,40 +332,49 @@
         <div class="modal-overlay" id="add-model-modal" style="display: none;">
             <div class="modal-dialog modal-sm">
                 <div class="modal-header">
-                    <h4>添加模型</h4>
+                    <div class="modal-header-left">
+                        <img src="" alt="" class="modal-provider-icon" id="modal-provider-icon">
+                        <h4 id="add-model-title">添加模型</h4>
+                    </div>
                     <button class="btn-close-modal" id="btn-close-add-model">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>模型名称</label>
+                        <label>模型名称 <span class="required">*</span></label>
                         <input type="text" class="form-control" id="input-model-name" placeholder="例如：GPT-4">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="provider-select-group" style="display: none;">
                         <label>服务商</label>
                         <select class="form-select" id="select-model-provider">
                             <option value="openai">OpenAI</option>
                             <option value="azure">Azure OpenAI</option>
                             <option value="anthropic">Anthropic</option>
+                            <option value="gemini">Google Gemini</option>
                             <option value="deepseek">DeepSeek</option>
                             <option value="zhipu">智谱AI</option>
                             <option value="qwen">通义千问</option>
+                            <option value="moonshot">Moonshot</option>
+                            <option value="ollama">Ollama</option>
+                            <option value="siliconcloud">硅基流动</option>
+                            <option value="doubao">豆包</option>
+                            <option value="groq">Groq</option>
                             <option value="custom">自定义</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>API URL</label>
+                        <label>API URL <span class="required">*</span></label>
                         <input type="text" class="form-control" id="input-model-url" 
                                placeholder="https://api.openai.com/v1/chat/completions">
                     </div>
-                    <div class="form-group">
-                        <label>API Key</label>
+                    <div class="form-group" id="api-key-group">
+                        <label>API Key <span class="required">*</span></label>
                         <input type="password" class="form-control" id="input-model-key" 
                                placeholder="sk-xxx...">
                     </div>
                     <div class="form-group">
-                        <label>模型标识</label>
+                        <label>模型标识 <span class="required">*</span></label>
                         <input type="text" class="form-control" id="input-model-id" 
                                placeholder="gpt-4-turbo-preview">
                     </div>

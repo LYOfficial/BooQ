@@ -59,6 +59,7 @@
 html, body {
     height: 100%;
     overflow: hidden;
+    background: transparent;
 }
 
 body {
@@ -66,7 +67,7 @@ body {
     font-size: 14px;
     line-height: 1.5;
     color: var(--text-primary);
-    background-color: var(--bg-primary);
+    background-color: transparent;
     transition: background-color 0.3s, color 0.3s;
 }
 
@@ -75,6 +76,10 @@ body {
     flex-direction: column;
     height: 100%;
     width: 100%;
+    background-color: var(--bg-primary);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 /* ==================== 自定义滚动条 ==================== */
@@ -101,10 +106,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 32px;
+    height: 40px;
     background-color: var(--titlebar-bg);
-    padding: 0 8px;
+    padding: 0 0 0 12px;
     user-select: none;
+    border-radius: 10px 10px 0 0;
 }
 
 .titlebar-left {
@@ -135,7 +141,8 @@ body {
 .titlebar-right {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 0;
+    height: 100%;
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
@@ -146,13 +153,13 @@ body {
     align-items: center;
     justify-content: center;
     width: 46px;
-    height: 32px;
+    height: 100%;
     border: none;
     background: transparent;
     color: var(--text-primary);
     cursor: pointer;
     transition: background-color 0.15s;
-    font-size: 12px;
+    font-size: 14px;
     -webkit-app-region: no-drag;
     app-region: no-drag;
     pointer-events: auto;
@@ -162,7 +169,12 @@ body {
     background-color: var(--titlebar-btn-hover);
 }
 
-.titlebar-btn.btn-close:hover {
+.titlebar-btn.titlebar-close {
+    width: 50px;
+    border-radius: 0 10px 0 0;
+}
+
+.titlebar-btn.titlebar-close:hover {
     background-color: var(--close-btn-hover);
     color: white;
 }
@@ -583,7 +595,7 @@ body {
     max-width: 600px;
     max-height: 80vh;
     background-color: var(--bg-primary);
-    border-radius: 8px;
+    border-radius: 12px;
     box-shadow: 0 8px 32px var(--shadow-color);
     display: flex;
     flex-direction: column;
@@ -592,7 +604,12 @@ body {
 }
 
 .modal-dialog.modal-sm {
-    max-width: 400px;
+    max-width: 450px;
+}
+
+.modal-dialog.modal-lg {
+    max-width: 900px;
+    height: 600px;
 }
 
 .modal-header {
@@ -1022,4 +1039,284 @@ body {
 
 .modal-dialog {
     animation: slideIn 0.2s ease;
+}
+
+/* ==================== 新设置页面样式 ==================== */
+.modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-provider-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.modal-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 12px;
+}
+
+.settings-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.settings-sidebar {
+    width: 220px;
+    min-width: 220px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 2px solid transparent;
+}
+
+.settings-nav-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.settings-nav-item.active {
+    background-color: rgba(37, 99, 235, 0.08);
+    border-color: var(--accent-color);
+}
+
+.settings-nav-item i {
+    font-size: 18px;
+    color: var(--text-secondary);
+    width: 24px;
+    text-align: center;
+}
+
+.settings-nav-item.active i {
+    color: var(--accent-color);
+}
+
+.nav-item-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.nav-item-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.settings-section-panel {
+    display: none;
+}
+
+.settings-section-panel.active {
+    display: block;
+}
+
+.section-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.form-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.required {
+    color: var(--danger-color);
+}
+
+/* 模型配置头部 */
+.model-config-header {
+    margin-bottom: 24px;
+}
+
+.model-config-header h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* 供应商网格 */
+.provider-grid-section h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.provider-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 12px;
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-light);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 100px;
+}
+
+.provider-card:hover {
+    border-color: var(--accent-color);
+    background-color: rgba(37, 99, 235, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.provider-card.active {
+    border-color: var(--accent-color);
+    background-color: rgba(37, 99, 235, 0.08);
+}
+
+.provider-card.configured {
+    position: relative;
+}
+
+.provider-card.configured::after {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    background-color: var(--success-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.provider-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.provider-name {
+    font-size: 12px;
+    color: var(--text-primary);
+    text-align: center;
+    font-weight: 500;
+}
+
+.provider-card.add-custom {
+    border-style: dashed;
+    background-color: transparent;
+}
+
+.provider-card.add-custom i {
+    font-size: 24px;
+    color: var(--accent-color);
+    margin-bottom: 8px;
+}
+
+.provider-card.add-custom .provider-name {
+    color: var(--accent-color);
+}
+
+/* 深色模式图标适配 - light版本图标是深色，需要反转成亮色 */
+[data-theme="dark"] .provider-icon {
+    filter: brightness(0) invert(1);
+}
+
+[data-theme="dark"] .model-item-icon {
+    filter: brightness(0) invert(1);
+}
+
+/* 模型列表空状态 */
+.model-list:empty::before {
+    content: '暂未添加模型，请在下方选择供应商';
+    display: block;
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+}
+
+/* 模型项带图标 */
+.model-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+}
+
+.model-item-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+[data-theme="dark"] .model-item-icon {
+    filter: brightness(0) invert(1);
+}
+
+.model-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.model-item-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.model-item-provider {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.model-item-actions {
+    display: flex;
+    gap: 4px;
 }
