@@ -2,7 +2,26 @@
 
 import { invoke } from '@tauri-apps/api/tauri';
 import { open } from '@tauri-apps/api/dialog';
+import { listen } from '@tauri-apps/api/event';
 import { getThemeManager } from '../main';
+
+// 定义解除监听函数类型
+type UnlistenFn = () => void;
+
+// 日志条目接口
+export interface LogEntry {
+    timestamp: string;
+    level: string;
+    source: string;
+    message: string;
+}
+
+// MinerU 安装信息接口
+export interface MineruInstallInfo {
+    is_installed: boolean;
+    command_available: boolean;
+    executable_path: string | null;
+}
 
 export interface ModelConfig {
     id: string;
@@ -20,6 +39,11 @@ export interface AppConfig {
     reading_model: string;
     analysis_model: string;
     solving_model: string;
+    // OCR 相关配置
+    use_paddle_ocr: boolean;
+    mineru_installed: boolean;
+    paddle_ocr_url: string;
+    paddle_ocr_token: string;
 }
 
 // 供应商配置信息
@@ -99,6 +123,7 @@ export class SettingsManager {
         await this.loadConfig();
         this.bindNavigationEvents();
         this.bindProviderCardEvents();
+        this.bindLogEvents();
     }
 
     private bindNavigationEvents() {
@@ -123,6 +148,11 @@ export class SettingsManager {
         document.querySelectorAll('.settings-section-panel').forEach(panel => {
             panel.classList.toggle('active', panel.id === `section-${section}`);
         });
+
+        // 切换到日志面板时自动加载日志
+        if (section === 'logs') {
+            this.loadLogs();
+        }
     }
 
     private bindProviderCardEvents() {
@@ -152,7 +182,11 @@ export class SettingsManager {
                 models: [],
                 reading_model: '',
                 analysis_model: '',
-                solving_model: ''
+                solving_model: '',
+                use_paddle_ocr: false,
+                mineru_installed: false,
+                paddle_ocr_url: '',
+                paddle_ocr_token: ''
             };
         }
     }
@@ -179,6 +213,64 @@ export class SettingsManager {
         this.renderModelList();
         this.updateModelSelects();
         this.updateProviderCards();
+        
+        // 更新工具设置
+        this.updateToolsSettings();
+    }
+
+    private async updateToolsSettings() {
+        if (!this.config) return;
+
+        // 更新 MinerU 状态
+        const mineruBadge = document.getElementById('mineru-status-badge');
+        const installBtn = document.getElementById('btn-install-mineru') as HTMLButtonElement;
+        
+        try {
+            const isInstalled = await invoke<boolean>('check_mineru_installed');
+            this.config.mineru_installed = isInstalled;
+            
+            if (mineruBadge) {
+                if (isInstalled) {
+                    mineruBadge.textContent = '已安装';
+                    mineruBadge.classList.add('installed');
+                    mineruBadge.classList.remove('installing');
+                } else {
+                    mineruBadge.textContent = '未安装';
+                    mineruBadge.classList.remove('installed', 'installing');
+                }
+            }
+            
+            if (installBtn) {
+                installBtn.disabled = isInstalled;
+                if (isInstalled) {
+                    installBtn.innerHTML = '<i class="bi bi-check-circle"></i> 已安装';
+                }
+            }
+        } catch (error) {
+            console.error('检测 MinerU 状态失败:', error);
+        }
+
+        // 更新 PaddleOCR 设置
+        const paddleToggle = document.getElementById('toggle-paddle-ocr') as HTMLInputElement;
+        const paddleConfig = document.getElementById('paddle-ocr-config');
+        const paddleUrlInput = document.getElementById('input-paddle-url') as HTMLInputElement;
+        const paddleTokenInput = document.getElementById('input-paddle-token') as HTMLInputElement;
+
+        if (paddleToggle) {
+            paddleToggle.checked = this.config.use_paddle_ocr;
+        }
+        
+        if (paddleConfig) {
+            paddleConfig.classList.toggle('visible', this.config.use_paddle_ocr);
+        }
+
+        if (paddleUrlInput && this.config.paddle_ocr_url) {
+            paddleUrlInput.value = this.config.paddle_ocr_url;
+        }
+
+        if (paddleTokenInput && this.config.paddle_ocr_token) {
+            paddleTokenInput.value = this.config.paddle_ocr_token;
+        }
     }
 
     private renderModelList() {
@@ -295,6 +387,15 @@ export class SettingsManager {
         if (themeRadio) {
             this.config.theme = themeRadio.value;
         }
+
+        // 获取 PaddleOCR 设置
+        const paddleToggle = document.getElementById('toggle-paddle-ocr') as HTMLInputElement;
+        const paddleUrlInput = document.getElementById('input-paddle-url') as HTMLInputElement;
+        const paddleTokenInput = document.getElementById('input-paddle-token') as HTMLInputElement;
+
+        this.config.use_paddle_ocr = paddleToggle?.checked || false;
+        this.config.paddle_ocr_url = paddleUrlInput?.value?.trim() || '';
+        this.config.paddle_ocr_token = paddleTokenInput?.value?.trim() || '';
 
         try {
             await invoke('save_config', { configData: this.config });
@@ -485,6 +586,331 @@ export class SettingsManager {
         } catch (error) {
             console.error('删除模型失败:', error);
         }
+    }
+
+    async testModel() {
+        const urlInput = document.getElementById('input-model-url') as HTMLInputElement;
+        const keyInput = document.getElementById('input-model-key') as HTMLInputElement;
+        const modelIdInput = document.getElementById('input-model-id') as HTMLInputElement;
+        const testButton = document.getElementById('btn-test-model') as HTMLButtonElement;
+
+        const apiUrl = urlInput?.value?.trim();
+        const apiKey = keyInput?.value?.trim() || '';
+        const modelName = modelIdInput?.value?.trim();
+        const provider = this.selectedProvider;
+
+        // Ollama 不需要 API Key
+        const needsApiKey = provider !== 'ollama';
+
+        if (!apiUrl || !modelName) {
+            alert('请先填写 API URL 和模型标识');
+            return;
+        }
+
+        if (needsApiKey && !apiKey) {
+            alert('请先填写 API Key');
+            return;
+        }
+
+        // 设置按钮为加载状态
+        const originalContent = testButton.innerHTML;
+        testButton.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> 测试中...';
+        testButton.disabled = true;
+
+        try {
+            const response = await invoke<string>('test_model', {
+                apiUrl,
+                apiKey,
+                modelName
+            });
+            
+            // 测试成功
+            testButton.innerHTML = '<i class="bi bi-check-circle"></i> 连接成功';
+            testButton.classList.remove('btn-outline-primary', 'btn-outline-danger');
+            testButton.classList.add('btn-outline-success');
+            
+            console.log('模型响应:', response);
+            
+            // 3秒后恢复按钮
+            setTimeout(() => {
+                testButton.innerHTML = originalContent;
+                testButton.classList.remove('btn-outline-success');
+                testButton.classList.add('btn-outline-primary');
+                testButton.disabled = false;
+            }, 3000);
+        } catch (error) {
+            // 测试失败
+            testButton.innerHTML = '<i class="bi bi-x-circle"></i> 连接失败';
+            testButton.classList.remove('btn-outline-primary', 'btn-outline-success');
+            testButton.classList.add('btn-outline-danger');
+            
+            console.error('测试模型失败:', error);
+            alert(`测试失败: ${error}`);
+            
+            // 3秒后恢复按钮
+            setTimeout(() => {
+                testButton.innerHTML = originalContent;
+                testButton.classList.remove('btn-outline-danger');
+                testButton.classList.add('btn-outline-primary');
+                testButton.disabled = false;
+            }, 3000);
+        }
+    }
+
+    private mineruInstallUnlisten: UnlistenFn | null = null;
+
+    async installMinerU() {
+        const installBtn = document.getElementById('btn-install-mineru') as HTMLButtonElement;
+        const badge = document.getElementById('mineru-status-badge');
+        const terminalContainer = document.getElementById('terminal-container');
+        const terminalOutput = document.getElementById('terminal-output');
+        
+        if (!installBtn) return;
+
+        const originalContent = installBtn.innerHTML;
+        installBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> 安装中...';
+        installBtn.disabled = true;
+        
+        if (badge) {
+            badge.textContent = '安装中';
+            badge.classList.add('installing');
+            badge.classList.remove('installed');
+        }
+
+        // 显示终端容器
+        if (terminalContainer) {
+            terminalContainer.style.display = 'block';
+        }
+        if (terminalOutput) {
+            terminalOutput.innerHTML = '';
+        }
+
+        // 监听安装输出事件
+        this.mineruInstallUnlisten = await listen<{type: string, message: string}>('mineru-install-output', (event) => {
+            if (terminalOutput) {
+                const span = document.createElement('span');
+                span.className = `${event.payload.type}-line`;
+                span.textContent = event.payload.message;
+                terminalOutput.appendChild(span);
+                // 自动滚动到底部
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }
+        });
+
+        try {
+            await invoke<string>('install_mineru');
+            
+            installBtn.innerHTML = '<i class="bi bi-check-circle"></i> 已安装';
+            
+            if (badge) {
+                badge.textContent = '已安装';
+                badge.classList.remove('installing');
+                badge.classList.add('installed');
+            }
+            
+            if (this.config) {
+                this.config.mineru_installed = true;
+            }
+        } catch (error) {
+            installBtn.innerHTML = originalContent;
+            installBtn.disabled = false;
+            
+            if (badge) {
+                badge.textContent = '安装失败';
+                badge.classList.remove('installing', 'installed');
+            }
+            
+            console.error('安装 MinerU 失败:', error);
+        } finally {
+            // 停止监听
+            if (this.mineruInstallUnlisten) {
+                this.mineruInstallUnlisten();
+                this.mineruInstallUnlisten = null;
+            }
+        }
+    }
+
+    closeTerminal() {
+        const terminalContainer = document.getElementById('terminal-container');
+        if (terminalContainer) {
+            terminalContainer.style.display = 'none';
+        }
+    }
+
+    async checkMinerU() {
+        const badge = document.getElementById('mineru-status-badge');
+        const installBtn = document.getElementById('btn-install-mineru') as HTMLButtonElement;
+        const checkBtn = document.getElementById('btn-check-mineru') as HTMLButtonElement;
+        const pathInfo = document.getElementById('mineru-path-info');
+        const exePath = document.getElementById('mineru-exe-path');
+        const pathStatus = document.getElementById('mineru-path-status');
+
+        if (checkBtn) {
+            checkBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i>';
+            checkBtn.disabled = true;
+        }
+
+        try {
+            // 使用新的详情 API
+            const info = await invoke<MineruInstallInfo>('get_mineru_info');
+            
+            if (this.config) {
+                this.config.mineru_installed = info.is_installed;
+            }
+            
+            // 更新状态徽章
+            if (badge) {
+                if (info.command_available) {
+                    badge.textContent = '已就绪';
+                    badge.classList.add('installed');
+                    badge.classList.remove('installing');
+                } else if (info.is_installed) {
+                    badge.textContent = '需配置';
+                    badge.classList.remove('installed');
+                    badge.classList.add('installing');
+                } else {
+                    badge.textContent = '未安装';
+                    badge.classList.remove('installed', 'installing');
+                }
+            }
+            
+            // 更新路径信息
+            if (pathInfo) {
+                if (info.is_installed) {
+                    pathInfo.style.display = 'block';
+                    
+                    if (exePath) {
+                        exePath.textContent = info.executable_path || '未找到可执行文件';
+                    }
+                    
+                    if (pathStatus) {
+                        if (info.command_available) {
+                            pathStatus.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i><span>命令可用</span>';
+                        } else {
+                            pathStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-warning"></i><span>命令不可用，请检查 Python Scripts 目录是否在 PATH 中</span>';
+                        }
+                    }
+                } else {
+                    pathInfo.style.display = 'none';
+                }
+            }
+            
+            // 更新安装按钮
+            if (installBtn) {
+                installBtn.disabled = info.command_available;
+                if (info.command_available) {
+                    installBtn.innerHTML = '<i class="bi bi-check-circle"></i> 已就绪';
+                } else if (info.is_installed) {
+                    installBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 重新检测路径';
+                } else {
+                    installBtn.innerHTML = '<i class="bi bi-download"></i> 安装 MinerU';
+                }
+            }
+        } catch (error) {
+            console.error('检测 MinerU 失败:', error);
+        } finally {
+            if (checkBtn) {
+                checkBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 检测';
+                checkBtn.disabled = false;
+            }
+        }
+    }
+
+    togglePaddleOcrConfig() {
+        const paddleToggle = document.getElementById('toggle-paddle-ocr') as HTMLInputElement;
+        const paddleConfig = document.getElementById('paddle-ocr-config');
+
+        if (paddleConfig && paddleToggle) {
+            paddleConfig.classList.toggle('visible', paddleToggle.checked);
+        }
+    }
+
+    // ==================== 日志管理 ====================
+
+    async loadLogs() {
+        try {
+            const logs = await invoke<LogEntry[]>('get_logs');
+            this.displayLogs(logs);
+        } catch (error) {
+            console.error('加载日志失败:', error);
+        }
+    }
+
+    private displayLogs(logs: LogEntry[]) {
+        const container = document.getElementById('log-container');
+        if (!container) return;
+
+        // 获取过滤条件
+        const filters = this.getLogFilters();
+
+        // 过滤日志
+        const filteredLogs = logs.filter(log => filters.includes(log.level.toLowerCase()));
+
+        if (filteredLogs.length === 0) {
+            container.innerHTML = '<div class="log-empty">暂无日志记录</div>';
+            return;
+        }
+
+        // 渲染日志条目（按时间倒序）
+        const html = filteredLogs.reverse().map(log => `
+            <div class="log-entry">
+                <span class="log-time">${log.timestamp}</span>
+                <span class="log-level level-${log.level.toLowerCase()}">${log.level}</span>
+                <span class="log-source">${log.source}</span>
+                <span class="log-message">${this.escapeHtml(log.message)}</span>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    }
+
+    private getLogFilters(): string[] {
+        const filters: string[] = [];
+        document.querySelectorAll('.log-filter-check').forEach((checkbox) => {
+            const input = checkbox as HTMLInputElement;
+            if (input.checked) {
+                const level = input.getAttribute('data-level');
+                if (level) filters.push(level);
+            }
+        });
+        return filters;
+    }
+
+    private escapeHtml(text: string): string {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async clearLogs() {
+        try {
+            await invoke('clear_logs');
+            const container = document.getElementById('log-container');
+            if (container) {
+                container.innerHTML = '<div class="log-empty">暂无日志记录</div>';
+            }
+        } catch (error) {
+            console.error('清空日志失败:', error);
+        }
+    }
+
+    bindLogEvents() {
+        // 刷新日志按钮
+        const refreshBtn = document.getElementById('btn-refresh-logs');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadLogs());
+        }
+
+        // 清空日志按钮
+        const clearBtn = document.getElementById('btn-clear-logs');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearLogs());
+        }
+
+        // 过滤器变化时刷新
+        document.querySelectorAll('.log-filter-check').forEach((checkbox) => {
+            checkbox.addEventListener('change', () => this.loadLogs());
+        });
     }
 
     getConfig(): AppConfig | null {

@@ -187,6 +187,20 @@
                                 <span class="nav-item-desc">配置分析流程</span>
                             </div>
                         </div>
+                        <div class="settings-nav-item" data-section="tools">
+                            <i class="bi bi-tools"></i>
+                            <div class="nav-item-content">
+                                <span class="nav-item-title">工具部署</span>
+                                <span class="nav-item-desc">OCR 工具配置</span>
+                            </div>
+                        </div>
+                        <div class="settings-nav-item" data-section="logs">
+                            <i class="bi bi-journal-text"></i>
+                            <div class="nav-item-content">
+                                <span class="nav-item-title">运行日志</span>
+                                <span class="nav-item-desc">查看系统日志</span>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- 右侧内容区 -->
@@ -322,6 +336,124 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 工具部署 -->
+                        <div class="settings-section-panel" id="section-tools">
+                            <div class="settings-section">
+                                <h5>本地 OCR 工具</h5>
+                                <p class="section-desc">使用 MinerU 进行本地文档解析，无需联网，无使用限额</p>
+                                <div class="tool-card">
+                                    <div class="tool-info">
+                                        <div class="tool-header">
+                                            <i class="bi bi-file-earmark-text tool-icon"></i>
+                                            <div class="tool-title">
+                                                <span class="tool-name">MinerU</span>
+                                                <span class="tool-badge" id="mineru-status-badge">未安装</span>
+                                            </div>
+                                        </div>
+                                        <p class="tool-desc">开源 PDF 文档解析工具，支持高质量的 PDF 到 Markdown 转换。需要 Python 环境。</p>
+                                        
+                                        <!-- 路径信息 -->
+                                        <div class="mineru-path-info" id="mineru-path-info" style="display: none;">
+                                            <div class="path-row">
+                                                <span class="path-label">可执行文件：</span>
+                                                <code class="path-value" id="mineru-exe-path">-</code>
+                                            </div>
+                                            <div class="path-status" id="mineru-path-status">
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                                <span>命令可用</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tool-actions">
+                                        <button class="btn btn-primary" id="btn-install-mineru">
+                                            <i class="bi bi-download"></i> 安装 MinerU
+                                        </button>
+                                        <button class="btn btn-outline-secondary" id="btn-check-mineru">
+                                            <i class="bi bi-arrow-repeat"></i> 检测
+                                        </button>
+                                    </div>
+                                    <!-- 终端输出区域 -->
+                                    <div class="terminal-container" id="terminal-container" style="display: none;">
+                                        <div class="terminal-header">
+                                            <span class="terminal-title"><i class="bi bi-terminal"></i> 终端输出</span>
+                                            <button class="btn-terminal-close" id="btn-close-terminal">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                        <div class="terminal-output" id="terminal-output"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <div class="section-header-with-toggle">
+                                    <h5>PaddleOCR-VL API（可选）</h5>
+                                    <label class="toggle-label">
+                                        <input type="checkbox" id="toggle-paddle-ocr">
+                                        <span class="toggle-switch"></span>
+                                    </label>
+                                </div>
+                                <p class="section-desc">使用百度 PaddleOCR-VL API 进行高精度文档解析，需要配置 API 密钥</p>
+                                
+                                <div class="paddle-ocr-config" id="paddle-ocr-config">
+                                    <div class="form-group">
+                                        <label>API URL</label>
+                                        <input type="text" class="form-control" id="input-paddle-url" 
+                                               placeholder="https://paddleocr.ai/api/v1/parse">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>API Token</label>
+                                        <input type="password" class="form-control" id="input-paddle-token" 
+                                               placeholder="your-api-token">
+                                    </div>
+                                    <button class="btn btn-outline-primary btn-sm" id="btn-test-paddle">
+                                        <i class="bi bi-play-circle"></i> 测试连接
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 运行日志 -->
+                        <div class="settings-section-panel" id="section-logs">
+                            <div class="settings-section">
+                                <div class="section-header-with-toggle">
+                                    <h5>运行日志</h5>
+                                    <div class="log-actions">
+                                        <button class="btn btn-outline-secondary btn-sm" id="btn-refresh-logs">
+                                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" id="btn-clear-logs">
+                                            <i class="bi bi-trash"></i> 清空
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="section-desc">查看系统运行时产生的日志信息，便于调试和排查问题</p>
+                                
+                                <div class="log-filter">
+                                    <label class="log-filter-item">
+                                        <input type="checkbox" class="log-filter-check" data-level="info" checked> 
+                                        <span class="log-level-badge level-info">INFO</span>
+                                    </label>
+                                    <label class="log-filter-item">
+                                        <input type="checkbox" class="log-filter-check" data-level="warn" checked> 
+                                        <span class="log-level-badge level-warn">WARN</span>
+                                    </label>
+                                    <label class="log-filter-item">
+                                        <input type="checkbox" class="log-filter-check" data-level="error" checked> 
+                                        <span class="log-level-badge level-error">ERROR</span>
+                                    </label>
+                                    <label class="log-filter-item">
+                                        <input type="checkbox" class="log-filter-check" data-level="debug"> 
+                                        <span class="log-level-badge level-debug">DEBUG</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="log-container" id="log-container">
+                                    <div class="log-empty">暂无日志记录</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -383,6 +515,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button class="btn btn-outline-primary" id="btn-test-model">
+                        <i class="bi bi-play-circle"></i> 测试连接
+                    </button>
+                    <div class="flex-spacer"></div>
                     <button class="btn btn-secondary" id="btn-cancel-add-model">取消</button>
                     <button class="btn btn-primary" id="btn-confirm-add-model">添加</button>
                 </div>

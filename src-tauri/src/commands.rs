@@ -70,6 +70,15 @@ pub struct AppConfig {
     pub reading_model: String,
     pub analysis_model: String,
     pub solving_model: String,
+    // OCR 相关配置
+    #[serde(default)]
+    pub use_paddle_ocr: bool,
+    #[serde(default)]
+    pub mineru_installed: bool,
+    #[serde(default)]
+    pub paddle_ocr_url: String,
+    #[serde(default)]
+    pub paddle_ocr_token: String,
 }
 
 // ==================== 文件管理命令 ====================
@@ -354,6 +363,21 @@ pub async fn get_storage_path(app_handle: tauri::AppHandle) -> Result<String, St
 // ==================== 系统命令 ====================
 
 #[tauri::command]
+pub async fn test_model(
+    api_url: String,
+    api_key: String,
+    model_name: String,
+) -> Result<String, String> {
+    use crate::ai_service::AIService;
+    
+    let service = AIService::new(&api_url, &api_key, &model_name);
+    service
+        .test_connection()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_system_theme() -> String {
     #[cfg(target_os = "windows")]
     {
@@ -385,4 +409,92 @@ pub fn get_system_theme() -> String {
     {
         "light".to_string()
     }
+}
+
+// ==================== MinerU 相关命令 ====================
+
+/// 检查 MinerU 是否已安装
+#[tauri::command]
+pub fn check_mineru_installed() -> bool {
+    crate::mineru_service::MineruService::check_installed()
+}
+
+/// 获取 MinerU 安装详情
+#[tauri::command]
+pub fn get_mineru_info() -> crate::mineru_service::MineruInstallInfo {
+    crate::mineru_service::MineruService::get_install_info()
+}
+
+/// 刷新 MinerU 路径检测
+#[tauri::command]
+pub fn refresh_mineru_path() -> Option<String> {
+    crate::mineru_service::MineruService::refresh_magic_pdf_path()
+}
+
+/// 安装 MinerU（带实时输出）
+#[tauri::command]
+pub async fn install_mineru(app_handle: tauri::AppHandle) -> Result<String, String> {
+    // 使用 spawn_blocking 在后台线程运行阻塞代码
+    let result = tokio::task::spawn_blocking(move || {
+        crate::mineru_service::MineruService::install_with_events(&app_handle)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    
+    // 安装完成后刷新路径检测
+    crate::mineru_service::MineruService::refresh_magic_pdf_path();
+    
+    result.map_err(|e| e.to_string())
+}
+
+/// 使用 MinerU 转换 PDF
+#[tauri::command]
+pub async fn convert_with_mineru(
+    app_handle: tauri::AppHandle,
+    file_id: String,
+) -> Result<Vec<String>, String> {
+    use crate::mineru_service::{MineruService, get_mineru_output_dir};
+    
+    // 获取文件信息
+    let file_info = file_manager::get_file_info(&app_handle, &file_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    let output_dir = get_mineru_output_dir(&app_handle, &file_id);
+    
+    let service = MineruService::new();
+    service
+        .convert_pdf_full(&file_info.path, &output_dir)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ==================== 日志命令 ====================
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct LogEntry {
+    pub timestamp: String,
+    pub level: String,
+    pub source: String,
+    pub message: String,
+}
+
+/// 获取运行日志
+#[tauri::command]
+pub fn get_logs() -> Vec<LogEntry> {
+    crate::logger::get_logs()
+        .into_iter()
+        .map(|e| LogEntry {
+            timestamp: e.timestamp,
+            level: e.level,
+            source: e.source,
+            message: e.message,
+        })
+        .collect()
+}
+
+/// 清空日志
+#[tauri::command]
+pub fn clear_logs() {
+    crate::logger::clear_logs();
 }

@@ -32,6 +32,10 @@ pub fn init_config(app_dir: &Path) {
             reading_model: String::new(),
             analysis_model: String::new(),
             solving_model: String::new(),
+            use_paddle_ocr: false,
+            mineru_installed: false,
+            paddle_ocr_url: String::new(),
+            paddle_ocr_token: String::new(),
         };
         
         if let Ok(content) = serde_json::to_string_pretty(&default_config) {
@@ -61,6 +65,10 @@ pub async fn get_config(app_handle: &AppHandle) -> Result<AppConfig> {
             reading_model: String::new(),
             analysis_model: String::new(),
             solving_model: String::new(),
+            use_paddle_ocr: false,
+            mineru_installed: false,
+            paddle_ocr_url: String::new(),
+            paddle_ocr_token: String::new(),
         })
     }
 }
@@ -96,6 +104,10 @@ pub fn get_config_sync(app_handle: &AppHandle) -> AppConfig {
         reading_model: String::new(),
         analysis_model: String::new(),
         solving_model: String::new(),
+        use_paddle_ocr: false,
+        mineru_installed: false,
+        paddle_ocr_url: String::new(),
+        paddle_ocr_token: String::new(),
     }
 }
 

@@ -227,6 +227,27 @@ function bindSettingsEvents() {
         await settingsManager.addModel();
     });
 
+    document.getElementById('btn-test-model')?.addEventListener('click', async () => {
+        await settingsManager.testModel();
+    });
+
+    // 工具部署相关事件
+    document.getElementById('btn-install-mineru')?.addEventListener('click', async () => {
+        await settingsManager.installMinerU();
+    });
+
+    document.getElementById('btn-check-mineru')?.addEventListener('click', async () => {
+        await settingsManager.checkMinerU();
+    });
+
+    document.getElementById('btn-close-terminal')?.addEventListener('click', () => {
+        settingsManager.closeTerminal();
+    });
+
+    document.getElementById('toggle-paddle-ocr')?.addEventListener('change', () => {
+        settingsManager.togglePaddleOcrConfig();
+    });
+
     // 删除确认
     document.getElementById('btn-cancel-delete')?.addEventListener('click', () => {
         fileManager.hideDeleteConfirm();

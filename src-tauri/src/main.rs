@@ -10,10 +10,12 @@ mod commands;
 mod file_manager;
 mod ai_service;
 mod ocr_service;
+mod mineru_service;
 mod rag_service;
 mod question_analyzer;
 mod config;
 mod utils;
+mod logger;
 
 fn main() {
     // 加载 .env 文件（开发环境）
@@ -27,6 +29,9 @@ fn main() {
             
             // 初始化配置
             config::init_config(&app_dir);
+            
+            // 记录启动日志
+            logger::info("system", "BooQ 应用启动");
             
             Ok(())
         })
@@ -67,6 +72,18 @@ fn main() {
             
             // 系统命令
             commands::get_system_theme,
+            commands::test_model,
+            
+            // MinerU 相关命令
+            commands::check_mineru_installed,
+            commands::get_mineru_info,
+            commands::refresh_mineru_path,
+            commands::install_mineru,
+            commands::convert_with_mineru,
+            
+            // 日志命令
+            commands::get_logs,
+            commands::clear_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

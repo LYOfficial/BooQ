@@ -59,7 +59,7 @@ export class PreviewManager {
             <div class="loading-state">
                 <div class="loading-spinner"></div>
                 <p class="loading-text">${message}</p>
-                <p class="loading-hint">正在使用 AI 进行文档解析</p>
+                <p class="loading-hint">正在将文档转换为 Markdown 格式</p>
             </div>
         `;
     }

@@ -359,6 +359,10 @@ pub async fn convert_page_to_markdown(
     file_id: &str,
     page_number: u32,
 ) -> Result<String> {
+    use crate::logger;
+    
+    logger::info("ocr", &format!("开始转换页面 {} - file_id: {}", page_number, file_id));
+    
     let file_path = get_file_storage_path(app_handle, file_id);
     let markdown_dir = file_path.join("markdown");
     
@@ -367,6 +371,7 @@ pub async fn convert_page_to_markdown(
     let md_file_path = markdown_dir.join(&md_file_name);
     
     if md_file_path.exists() {
+        logger::debug("ocr", "使用缓存的 Markdown 文件");
         return fs::read_to_string(&md_file_path).map_err(|e| anyhow!("读取缓存失败: {}", e));
     }
     
@@ -378,26 +383,153 @@ pub async fn convert_page_to_markdown(
     // 根据文件类型进行处理
     let markdown_content = match file_info.file_type.as_str() {
         "pdf" => {
-            // 尝试使用 PaddleOCR-VL
-            if PaddleOCRClient::is_configured() {
-                convert_pdf_with_paddle_ocr(&file_info.path, &markdown_dir, page_number).await?
-            } else {
-                // 回退到简单文本提取
+            // 获取配置
+            let config = crate::config::get_config_sync(app_handle);
+            
+            // 优先使用 PaddleOCR（如果启用且配置了）
+            if config.use_paddle_ocr && is_paddle_ocr_configured(&config) {
+                logger::info("ocr", "使用 PaddleOCR API 进行转换");
+                convert_pdf_with_paddle_ocr_config(&file_info.path, &markdown_dir, page_number, &config).await?
+            }
+            // 其次使用 MinerU（如果命令可用）
+            else if crate::mineru_service::MineruService::check_command_available() {
+                logger::info("ocr", "使用 MinerU 本地工具进行转换");
+                convert_pdf_with_mineru(app_handle, &file_info.path, &markdown_dir, page_number).await?
+            }
+            // 最后回退到简单文本提取
+            else {
+                logger::warn("ocr", "MinerU 命令不可用，使用简单文本提取（效果较差）");
+                logger::warn("ocr", "请在设置 > 工具部署中安装 MinerU，或启用 PaddleOCR");
                 convert_pdf_page_to_markdown(&file_info.path, page_number).await?
             }
         }
         "txt" => {
+            logger::debug("ocr", "读取纯文本文件");
             let content = fs::read_to_string(&file_info.path)?;
             content
         }
-        _ => return Err(anyhow!("不支持的文件类型")),
+        _ => {
+            logger::error("ocr", &format!("不支持的文件类型: {}", file_info.file_type));
+            return Err(anyhow!("不支持的文件类型"));
+        }
     };
     
     // 保存 Markdown 到缓存
     fs::create_dir_all(&markdown_dir)?;
     fs::write(&md_file_path, &markdown_content)?;
+    logger::info("ocr", &format!("页面 {} 转换完成，已保存到缓存", page_number));
     
     Ok(markdown_content)
+}
+
+/// 检查 PaddleOCR 是否已配置（通过配置文件）
+fn is_paddle_ocr_configured(config: &crate::commands::AppConfig) -> bool {
+    !config.paddle_ocr_url.is_empty() && !config.paddle_ocr_token.is_empty()
+}
+
+/// 使用配置中的 PaddleOCR 信息进行转换
+async fn convert_pdf_with_paddle_ocr_config(
+    file_path: &str,
+    output_dir: &PathBuf,
+    page_number: u32,
+    config: &crate::commands::AppConfig,
+) -> Result<String> {
+    let client = PaddleOCRClient::new(&config.paddle_ocr_url, &config.paddle_ocr_token);
+    
+    // 只解析请求的单页
+    let result = client.parse_pdf_page(file_path, page_number).await?;
+    
+    // 规范化 LaTeX 代码
+    let normalized_content = normalize_latex(&result.markdown.text);
+    
+    // 保存当前页面（规范化后的内容）
+    fs::create_dir_all(output_dir)?;
+    let md_filename = output_dir.join(format!("{:04}_page.md", page_number));
+    fs::write(&md_filename, &normalized_content)?;
+    
+    // 下载并保存图片
+    for (img_path, img_url) in &result.markdown.images {
+        let full_img_path = output_dir.join(img_path);
+        if let Some(parent) = full_img_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        
+        if let Ok(img_response) = client.client.get(img_url).send().await {
+            if let Ok(img_bytes) = img_response.bytes().await {
+                let _ = fs::write(&full_img_path, &img_bytes);
+            }
+        }
+    }
+    
+    Ok(normalized_content)
+}
+
+/// 使用 MinerU 转换 PDF 单页
+async fn convert_pdf_with_mineru(
+    _app_handle: &AppHandle,
+    file_path: &str,
+    output_dir: &PathBuf,
+    page_number: u32,
+) -> Result<String> {
+    use crate::mineru_service::MineruService;
+    use crate::logger;
+    
+    let service = MineruService::new();
+    
+    logger::info("ocr", &format!("使用 MinerU 转换 PDF 第 {} 页: {}", page_number, file_path));
+    
+    // 获取 MinerU 输出目录
+    let mineru_output = output_dir.parent()
+        .map(|p| p.join("mineru_output"))
+        .unwrap_or_else(|| output_dir.clone());
+    
+    // 检查是否已有缓存的完整转换结果
+    let pdf_name = std::path::Path::new(file_path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("output");
+    
+    let cached_md = mineru_output.join(pdf_name).join("auto").join(format!("{}.md", pdf_name));
+    
+    let full_content = if cached_md.exists() {
+        logger::debug("ocr", &format!("使用缓存的 Markdown 文件: {}", cached_md.display()));
+        fs::read_to_string(&cached_md)?
+    } else {
+        logger::info("ocr", "缓存不存在，开始完整转换");
+        // 需要先转换整个 PDF
+        let result = service.convert_pdf_full(file_path, &mineru_output).await?;
+        if let Some(md_file) = result.first() {
+            logger::info("ocr", &format!("MinerU 转换成功: {}", md_file));
+            fs::read_to_string(md_file)?
+        } else {
+            logger::error("ocr", "MinerU 转换失败：未生成 Markdown 文件");
+            return Err(anyhow!("MinerU 转换失败：未生成 Markdown 文件"));
+        }
+    };
+    
+    // 按页面分割内容
+    let pages = crate::mineru_service::split_markdown_by_pages(&full_content);
+    logger::debug("ocr", &format!("分割得到 {} 个页面", pages.len()));
+    
+    // 获取指定页面
+    let page_content = if page_number as usize <= pages.len() {
+        pages[page_number as usize - 1].clone()
+    } else {
+        // 如果页码超出范围，返回完整内容（可能是单页或未正确分割）
+        if pages.len() == 1 {
+            pages[0].clone()
+        } else {
+            logger::error("ocr", &format!("页码 {} 超出范围，总共 {} 页", page_number, pages.len()));
+            return Err(anyhow!("页码 {} 超出范围", page_number));
+        }
+    };
+    
+    // 保存到缓存
+    fs::create_dir_all(output_dir)?;
+    let md_filename = output_dir.join(format!("{:04}_page.md", page_number));
+    fs::write(&md_filename, &page_content)?;
+    
+    Ok(page_content)
 }
 
 /// 使用 PaddleOCR-VL 转换 PDF 单页

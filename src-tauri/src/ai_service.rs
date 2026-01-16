@@ -241,6 +241,48 @@ impl AIService {
     }
 }
 
+/// 测试模型连接
+impl AIService {
+    pub async fn test_connection(&self) -> Result<String> {
+        let messages = vec![
+            ChatMessage {
+                role: "user".to_string(),
+                content: "Hello, this is a test message. Please respond with 'OK'.".to_string(),
+            },
+        ];
+
+        let request = ChatRequest {
+            model: self.model_name.clone(),
+            messages,
+            temperature: Some(0.1),
+            max_tokens: Some(50),
+            stream: Some(false),
+        };
+
+        let response = self
+            .client
+            .post(&self.api_url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await?;
+            return Err(anyhow!("API 请求失败: {}", error_text));
+        }
+
+        let chat_response: ChatResponse = response.json().await?;
+        
+        if let Some(choice) = chat_response.choices.first() {
+            Ok(choice.message.content.clone())
+        } else {
+            Err(anyhow!("API 返回空响应"))
+        }
+    }
+}
+
 /// 创建 AI 服务实例
 pub fn create_ai_service(api_url: &str, api_key: &str, model_name: &str) -> AIService {
     AIService::new(api_url, api_key, model_name)
