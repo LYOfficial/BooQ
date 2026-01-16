@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+  <!-- Book -->
+  <g transform="translate(80, 100)">
+    <!-- Book spine -->
+    <rect x="150" y="50" width="20" height="220" fill="#fff" opacity="0.9"/>
+    <!-- Left page -->
+    <path d="M150 50 Q80 60 60 80 L60 250 Q80 240 150 230 Z" fill="#fff" opacity="0.95"/>
+    <!-- Right page -->
+    <path d="M170 50 Q240 60 260 80 L260 250 Q240 240 170 230 Z" fill="#fff" opacity="0.85"/>
+    <!-- Page lines left -->
+    <line x1="80" y1="100" x2="140" y2="90" stroke="#667eea" stroke-width="3" opacity="0.5"/>
+    <line x1="80" y1="130" x2="140" y2="120" stroke="#667eea" stroke-width="3" opacity="0.5"/>
+    <line x1="80" y1="160" x2="140" y2="150" stroke="#667eea" stroke-width="3" opacity="0.5"/>
+  </g>
+  <!-- Question mark -->
+  <g transform="translate(280, 200)">
+    <circle cx="60" cy="60" r="55" fill="#fff" opacity="0.95"/>
+    <text x="60" y="82" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#764ba2" text-anchor="middle">?</text>
+  </g>
+</svg>

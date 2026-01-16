@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooQ - 智能题库生成器</title>
+    <!-- Bootstrap CSS from BootCDN -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- KaTeX CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/katex.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 自定义标题栏 -->
+        <header class="titlebar">
+            <div class="titlebar-left" data-tauri-drag-region>
+                <span class="app-logo">📚</span>
+                <span class="app-title">BooQ</span>
+                <span class="app-subtitle">智能题库生成器</span>
+            </div>
+            <div class="titlebar-right">
+                <button class="titlebar-btn" id="btn-theme" title="切换主题">
+                    <i class="bi bi-circle-half"></i>
+                </button>
+                <button class="titlebar-btn" id="btn-settings" title="设置">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <button class="titlebar-btn" id="btn-minimize" title="最小化">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <button class="titlebar-btn" id="btn-maximize" title="最大化">
+                    <i class="bi bi-square"></i>
+                </button>
+                <button class="titlebar-btn btn-close" id="btn-close" title="关闭">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 左侧：文件书架 -->
+            <aside class="sidebar sidebar-left">
+                <div class="sidebar-header">
+                    <h3>文件书架</h3>
+                    <button class="btn btn-sm btn-primary" id="btn-upload" title="上传文件">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+                <div class="file-list" id="file-list">
+                    <!-- 文件列表将通过 JS 动态生成 -->
+                    <div class="empty-state">
+                        <i class="bi bi-folder2-open"></i>
+                        <p>暂无文件</p>
+                        <p class="text-muted">点击上方按钮上传文件</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 中间：预览窗口 -->
+            <section class="preview-panel">
+                <div class="preview-header">
+                    <div class="preview-tabs">
+                        <button class="tab-btn active" data-mode="source">源文件</button>
+                        <button class="tab-btn" data-mode="markdown">MD文件</button>
+                        <button class="tab-btn" data-mode="code">代码文件</button>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn btn-sm btn-outline-primary" id="btn-convert-md" title="转换为Markdown">
+                            <i class="bi bi-file-earmark-text"></i> 转换成Markdown格式
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" id="btn-start-analysis" title="开始分析">
+                            <i class="bi bi-play-fill"></i> 开始分析
+                        </button>
+                    </div>
+                </div>
+                <div class="preview-content" id="preview-content">
+                    <div class="empty-state">
+                        <i class="bi bi-file-earmark-richtext"></i>
+                        <p>选择左侧文件进行预览</p>
+                    </div>
+                </div>
+                <div class="preview-footer">
+                    <div class="page-navigation">
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-prev-page" disabled>
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <span class="page-info">
+                            <input type="number" id="input-page" class="page-input" value="1" min="1">
+                            <span> / </span>
+                            <span id="total-pages">1</span>
+                        </span>
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-next-page" disabled>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：输出窗口 -->
+            <aside class="sidebar sidebar-right">
+                <div class="sidebar-header">
+                    <h3>题库输出</h3>
+                    <span class="question-count" id="question-count">0 题</span>
+                </div>
+                <div class="question-panel" id="question-panel">
+                    <div class="empty-state">
+                        <i class="bi bi-journal-text"></i>
+                        <p>暂无题目</p>
+                        <p class="text-muted">上传文件并开始分析后，题目将在这里展示</p>
+                    </div>
+                </div>
+                <div class="question-navigation" id="question-navigation" style="display: none;">
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-prev-question">
+                        <i class="bi bi-chevron-left"></i> 上一题
+                    </button>
+                    <span class="question-index" id="question-index">1 / 1</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-next-question">
+                        下一题 <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="analysis-progress" id="analysis-progress" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p class="progress-text" id="progress-text">准备分析中...</p>
+                </div>
+            </aside>
+        </main>
+
+        <!-- 右键菜单 -->
+        <div class="context-menu" id="context-menu" style="display: none;">
+            <div class="context-menu-item" data-action="copy">
+                <i class="bi bi-clipboard"></i> 复制
+            </div>
+            <div class="context-menu-item" data-action="paste">
+                <i class="bi bi-clipboard-check"></i> 粘贴
+            </div>
+            <div class="context-menu-divider"></div>
+            <div class="context-menu-item" data-action="rename">
+                <i class="bi bi-pencil"></i> 重命名
+            </div>
+            <div class="context-menu-item" data-action="delete" style="color: var(--danger-color);">
+                <i class="bi bi-trash"></i> 删除
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div class="modal-overlay" id="settings-modal" style="display: none;">
+            <div class="modal-dialog">
+                <div class="modal-header">
+                    <h4>设置</h4>
+                    <button class="btn-close-modal" id="btn-close-settings">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h5>存储设置</h5>
+                        <div class="form-group">
+                            <label>文件存储路径</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="input-storage-path" readonly>
+                                <button class="btn btn-outline-secondary" id="btn-browse-path">
+                                    <i class="bi bi-folder2"></i> 浏览
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h5>主题设置</h5>
+                        <div class="theme-options">
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="light">
+                                <span><i class="bi bi-sun"></i> 白天模式</span>
+                            </label>
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="dark">
+                                <span><i class="bi bi-moon"></i> 夜间模式</span>
+                            </label>
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="system" checked>
+                                <span><i class="bi bi-circle-half"></i> 跟随系统</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h5>模型配置</h5>
+                        <div class="model-list" id="model-list">
+                            <!-- 模型列表将通过 JS 动态生成 -->
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary mt-2" id="btn-add-model">
+                            <i class="bi bi-plus-lg"></i> 添加模型
+                        </button>
+                    </div>
+
+                    <div class="settings-section">
+                        <h5>工作流配置</h5>
+                        <div class="form-group">
+                            <label>阅读模型</label>
+                            <select class="form-select" id="select-reading-model">
+                                <option value="">请先添加模型</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>分析模型</label>
+                            <select class="form-select" id="select-analysis-model">
+                                <option value="">请先添加模型</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>解题模型</label>
+                            <select class="form-select" id="select-solving-model">
+                                <option value="">请先添加模型</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btn-cancel-settings">取消</button>
+                    <button class="btn btn-primary" id="btn-save-settings">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加模型弹窗 -->
+        <div class="modal-overlay" id="add-model-modal" style="display: none;">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-header">
+                    <h4>添加模型</h4>
+                    <button class="btn-close-modal" id="btn-close-add-model">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>模型名称</label>
+                        <input type="text" class="form-control" id="input-model-name" placeholder="例如：GPT-4">
+                    </div>
+                    <div class="form-group">
+                        <label>服务商</label>
+                        <select class="form-select" id="select-model-provider">
+                            <option value="openai">OpenAI</option>
+                            <option value="azure">Azure OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="zhipu">智谱AI</option>
+                            <option value="qwen">通义千问</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>API URL</label>
+                        <input type="text" class="form-control" id="input-model-url" 
+                               placeholder="https://api.openai.com/v1/chat/completions">
+                    </div>
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="password" class="form-control" id="input-model-key" 
+                               placeholder="sk-xxx...">
+                    </div>
+                    <div class="form-group">
+                        <label>模型标识</label>
+                        <input type="text" class="form-control" id="input-model-id" 
+                               placeholder="gpt-4-turbo-preview">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btn-cancel-add-model">取消</button>
+                    <button class="btn btn-primary" id="btn-confirm-add-model">添加</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 确认删除弹窗 -->
+        <div class="modal-overlay" id="delete-confirm-modal" style="display: none;">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-header">
+                    <h4>确认删除</h4>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除这个文件吗？此操作不可恢复。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btn-cancel-delete">取消</button>
+                    <button class="btn btn-danger" id="btn-confirm-delete">删除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 重命名弹窗 -->
+        <div class="modal-overlay" id="rename-modal" style="display: none;">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-header">
+                    <h4>重命名</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>新名称</label>
+                        <input type="text" class="form-control" id="input-new-name">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btn-cancel-rename">取消</button>
+                    <button class="btn btn-primary" id="btn-confirm-rename">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
+    <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
